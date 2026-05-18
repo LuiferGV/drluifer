@@ -521,7 +521,13 @@ export default function App() {
   );
 
   const availableDoctors = useMemo(
-    () => getUniquePractitionerNames(clinicPatients.flatMap((patient) => patient.treatments.map((treatment) => treatment.practitioner))),
+    () =>
+      getUniquePractitionerNames(
+        clinicPatients.flatMap((patient) => [
+          ...patient.treatments.map((treatment) => treatment.practitioner),
+          ...patient.finances.map((entry) => entry.practitioner ?? "")
+        ])
+      ),
     [clinicPatients]
   );
 
@@ -1175,7 +1181,14 @@ export default function App() {
           options: ["Consulta", "Periodoncia", "Operatoria", "Endodoncia", "Cirugia", "Implantes", "Control", "Otro"]
         },
         { name: "detail", label: "Tratamiento realizado", type: "text", required: true },
-        { name: "practitioner", label: "Doctor tratante", type: "text", required: true, placeholder: "Ej.: Dr. Luis F. Gonzalez" },
+        {
+          name: "practitioner",
+          label: "Doctor tratante",
+          type: "text",
+          required: true,
+          placeholder: "Elige uno ya cargado o escribe uno nuevo",
+          suggestions: availableDoctors
+        },
         { name: "totalAmount", label: "Monto del tratamiento", type: "number", min: 0, step: "1", required: true },
         ...(itemId
           ? []
@@ -1234,7 +1247,13 @@ export default function App() {
       return [
         { name: "date", label: "Fecha", type: "date", required: true },
         { name: "concept", label: "Concepto", type: "text", required: true },
-        { name: "practitioner", label: "Doctor tratante", type: "text", placeholder: "Opcional" },
+        {
+          name: "practitioner",
+          label: "Doctor tratante",
+          type: "text",
+          placeholder: "Elige uno ya cargado o escribe uno nuevo",
+          suggestions: availableDoctors
+        },
         { name: "totalAmount", label: "Monto total", type: "number", min: 0, step: "1", required: true },
         ...(itemId
           ? []
@@ -1447,6 +1466,7 @@ export default function App() {
           }
           submitLabel="Guardar visita"
           patientOptions={patientOptions}
+          practitionerSuggestions={availableDoctors}
           initialValues={{
             patientTarget: modalState.patientId ?? "",
             date: todayKey(),

@@ -13,6 +13,7 @@ export interface ModalField {
   min?: number;
   step?: string;
   rows?: number;
+  suggestions?: string[];
 }
 
 interface EntityModalProps {
@@ -210,6 +211,7 @@ export function EntityModal({
                 <label key={field.name} className="modal-field">
                   <span>{field.label}</span>
                   <input
+                    list={field.suggestions && field.suggestions.length > 0 ? `${modalId}-${field.name}-suggestions` : undefined}
                     type={field.type}
                     value={value}
                     placeholder={field.placeholder}
@@ -218,6 +220,13 @@ export function EntityModal({
                     step={field.step}
                     onChange={(event) => handleChange(field.name, event.target.value)}
                   />
+                  {field.suggestions && field.suggestions.length > 0 ? (
+                    <datalist id={`${modalId}-${field.name}-suggestions`}>
+                      {field.suggestions.map((suggestion) => (
+                        <option key={suggestion} value={suggestion} />
+                      ))}
+                    </datalist>
+                  ) : null}
                 </label>
               );
             })}

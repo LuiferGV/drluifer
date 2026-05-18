@@ -37,6 +37,7 @@ interface AttentionModalProps {
   subtitle?: string;
   submitLabel: string;
   patientOptions: PatientOption[];
+  practitionerSuggestions: string[];
   initialValues: AttentionFormValues;
   lockPatient?: boolean;
   onSubmit: (values: AttentionFormValues) => void;
@@ -72,6 +73,7 @@ export function AttentionModal({
   subtitle,
   submitLabel,
   patientOptions,
+  practitionerSuggestions,
   initialValues,
   lockPatient = false,
   onSubmit,
@@ -321,9 +323,10 @@ export function AttentionModal({
             <label className="modal-field">
               <span>Doctor tratante</span>
               <input
+                list={practitionerSuggestions.length > 0 ? `${modalId}-practitioner-suggestions` : undefined}
                 type="text"
                 value={values.practitioner}
-                placeholder="Ej.: Dr. Luis F. Gonzalez"
+                placeholder="Elige uno ya cargado o escribe uno nuevo"
                 required
                 onChange={(event) =>
                   setValues((current) => ({
@@ -332,6 +335,13 @@ export function AttentionModal({
                   }))
                 }
               />
+              {practitionerSuggestions.length > 0 ? (
+                <datalist id={`${modalId}-practitioner-suggestions`}>
+                  {practitionerSuggestions.map((suggestion) => (
+                    <option key={suggestion} value={suggestion} />
+                  ))}
+                </datalist>
+              ) : null}
             </label>
 
             <label className="modal-field modal-field--full">
