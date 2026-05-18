@@ -80,11 +80,17 @@ export function AttentionModal({
   onClose
 }: AttentionModalProps) {
   const modalId = useMemo(() => `attention-${Math.random().toString(36).slice(2, 9)}`, []);
+  const hasPractitionerSuggestions = practitionerSuggestions.length > 0;
   const [values, setValues] = useState<AttentionFormValues>(initialValues);
   const [patientDraft, setPatientDraft] = useState(() => {
     const selected = patientOptions.find((option) => option.value === initialValues.patientTarget);
     return selected?.label ?? "";
   });
+  const [useCustomPractitioner, setUseCustomPractitioner] = useState(
+    () =>
+      !hasPractitionerSuggestions ||
+      (Boolean(initialValues.practitioner) && !practitionerSuggestions.includes(initialValues.practitioner))
+  );
   const [showPatientResults, setShowPatientResults] = useState(false);
 
   useEffect(() => {
@@ -322,26 +328,72 @@ export function AttentionModal({
 
             <label className="modal-field">
               <span>Doctor tratante</span>
-              <input
-                list={practitionerSuggestions.length > 0 ? `${modalId}-practitioner-suggestions` : undefined}
-                type="text"
-                value={values.practitioner}
-                placeholder="Elige uno ya cargado o escribe uno nuevo"
-                required
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    practitioner: event.target.value
-                  }))
-                }
-              />
-              {practitionerSuggestions.length > 0 ? (
-                <datalist id={`${modalId}-practitioner-suggestions`}>
-                  {practitionerSuggestions.map((suggestion) => (
-                    <option key={suggestion} value={suggestion} />
-                  ))}
-                </datalist>
-              ) : null}
+              {hasPractitionerSuggestions && !useCustomPractitioner ? (
+                <>
+                  <select
+                    value={values.practitioner}
+                    required
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        practitioner: event.target.value
+                      }))
+                    }
+                  >
+                    <option value="">Seleccionar doctor</option>
+                    {practitionerSuggestions.map((suggestion) => (
+                      <option key={suggestion} value={suggestion}>
+                        {suggestion}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="modal-field__actions">
+                    <button
+                      type="button"
+                      className="ghost-button modal-inline-action"
+                      onClick={() => setUseCustomPractitioner(true)}
+                    >
+                      Cargar otro doctor
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={values.practitioner}
+                    placeholder={hasPractitionerSuggestions ? "Nuevo doctor o doctora" : "Ej.: Dr. Luis F. Gonzalez"}
+                    required
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        practitioner: event.target.value
+                      }))
+                    }
+                  />
+
+                  {hasPractitionerSuggestions ? (
+                    <div className="modal-field__actions">
+                      <button
+                        type="button"
+                        className="ghost-button modal-inline-action"
+                        onClick={() => {
+                          setUseCustomPractitioner(false);
+                          setValues((current) => ({
+                            ...current,
+                            practitioner: practitionerSuggestions.includes(current.practitioner)
+                              ? current.practitioner
+                              : ""
+                          }));
+                        }}
+                      >
+                        Elegir desde la lista
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </label>
 
             <label className="modal-field modal-field--full">

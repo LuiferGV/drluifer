@@ -1367,6 +1367,16 @@ a {
   color: var(--text-main);
 }
 
+.modal-field__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.modal-inline-action {
+  min-height: 40px;
+  padding-inline: 12px;
+}
+
 .modal-field--full {
   grid-column: 1 / -1;
 }
