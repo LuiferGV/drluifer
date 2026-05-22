@@ -43,6 +43,10 @@ import {
   normalizePatientPractitioners,
   normalizePractitionerName
 } from "./lib/practitioners";
+import {
+  getAutoFollowUpDateForType,
+  getSuggestedFollowUpFromAttention
+} from "./lib/followUpRules";
 import type {
   AlertFilter,
   Expense,
@@ -1348,6 +1352,27 @@ export default function App() {
 
     if (kind === "followup") {
       const item = itemId ? patient?.followUps.find((entry) => entry.id === itemId) ?? null : null;
+      if (!item) {
+        const latestTreatment = patient ? sortByDateDesc(patient.treatments)[0] ?? null : null;
+        const eventDate = latestTreatment?.date ?? todayKey();
+        const suggested =
+          latestTreatment
+            ? getSuggestedFollowUpFromAttention(
+                [{ category: latestTreatment.category, detail: latestTreatment.detail }],
+                eventDate
+              )
+            : null;
+
+        return {
+          eventDate,
+          dueDate: suggested?.dueDate ?? getAutoFollowUpDateForType("Control general", eventDate) ?? eventDate,
+          type: suggested?.type ?? "Control general",
+          source: latestTreatment?.detail ?? "",
+          status: "Pendiente",
+          notes: suggested?.note ?? ""
+        };
+      }
+
       return {
         eventDate: item?.eventDate ?? todayKey(),
         dueDate: item?.dueDate ?? todayKey(),
@@ -1397,6 +1422,23 @@ export default function App() {
     return {
       date: item?.date ?? todayKey(),
       text: item?.text ?? ""
+    };
+  };
+
+  const transformFollowUpValues = (
+    nextValues: Record<string, string>,
+    changedField: string
+  ): Record<string, string> => {
+    if (changedField !== "type" && changedField !== "eventDate") {
+      return nextValues;
+    }
+
+    const autoDueDate = getAutoFollowUpDateForType(nextValues.type, nextValues.eventDate);
+    if (!autoDueDate) return nextValues;
+
+    return {
+      ...nextValues,
+      dueDate: autoDueDate
     };
   };
 
@@ -1530,6 +1572,7 @@ export default function App() {
           modalState.patientId,
           modalState.type === "record-edit" ? modalState.itemId : undefined
         )}
+        transformValues={modalState.kind === "followup" ? transformFollowUpValues : undefined}
         onClose={closeModals}
         onSubmit={(values) =>
           submitRecordForm(
@@ -1541,7 +1584,7 @@ export default function App() {
         }
       />
     );
-  }, [clinicPatients, modalState, patientOptions]);
+  }, [availableDoctors, clinicPatients, modalState, patientOptions]);
 
   const deleteConfig = useMemo(() => {
     if (!deleteIntent) return null;

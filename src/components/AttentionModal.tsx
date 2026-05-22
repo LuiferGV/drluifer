@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  getAutoFollowUpDateForType,
+  getSuggestedFollowUpFromAttention,
+  getSuggestedFollowUpLabel
+} from "../lib/followUpRules";
 import type { TreatmentStatus } from "../types/clinic";
 
 interface PatientOption {
@@ -51,7 +56,7 @@ const followUpTypes = [
   "Retiro de puntos",
   "Control postoperatorio",
   "Reevaluacion periodontal",
-  "Mantenimiento",
+  "Mantenimiento 6 meses",
   "Otro"
 ];
 
@@ -92,6 +97,7 @@ export function AttentionModal({
       (Boolean(initialValues.practitioner) && !practitionerSuggestions.includes(initialValues.practitioner))
   );
   const [showPatientResults, setShowPatientResults] = useState(false);
+  const [followUpAutoMode, setFollowUpAutoMode] = useState(false);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -104,6 +110,10 @@ export function AttentionModal({
 
   const filteredPatients = patientOptions.filter((option) =>
     option.label.toLowerCase().includes(patientDraft.trim().toLowerCase())
+  );
+  const suggestedFollowUp = useMemo(
+    () => getSuggestedFollowUpFromAttention(values.items, values.date),
+    [values.date, values.items]
   );
 
   const totals = useMemo(
@@ -124,6 +134,50 @@ export function AttentionModal({
       ),
     [values.items]
   );
+
+  useEffect(() => {
+    if (!suggestedFollowUp) return;
+
+    const shouldPrimeSuggestion =
+      !values.scheduleFollowUp &&
+      !values.followUpDueDate &&
+      !values.followUpNotes.trim() &&
+      (!values.followUpType || values.followUpType === "Control general");
+
+    if (!followUpAutoMode && !shouldPrimeSuggestion) return;
+
+    const nextNote =
+      values.followUpNotes.trim() && !followUpAutoMode ? values.followUpNotes : suggestedFollowUp.note;
+
+    if (
+      values.scheduleFollowUp &&
+      values.followUpType === suggestedFollowUp.type &&
+      values.followUpDueDate === suggestedFollowUp.dueDate &&
+      values.followUpNotes === nextNote
+    ) {
+      return;
+    }
+
+    setValues((current) => ({
+      ...current,
+      scheduleFollowUp: true,
+      followUpType: suggestedFollowUp.type,
+      followUpDueDate: suggestedFollowUp.dueDate,
+      followUpNotes:
+        current.followUpNotes.trim() && !followUpAutoMode ? current.followUpNotes : suggestedFollowUp.note
+    }));
+
+    if (!followUpAutoMode) {
+      setFollowUpAutoMode(true);
+    }
+  }, [
+    followUpAutoMode,
+    suggestedFollowUp,
+    values.followUpDueDate,
+    values.followUpNotes,
+    values.followUpType,
+    values.scheduleFollowUp
+  ]);
 
   const updateItem = (itemId: string, field: keyof AttentionLineItemForm, nextValue: string) => {
     setValues((current) => ({
@@ -532,16 +586,35 @@ export function AttentionModal({
                 <button
                   type="button"
                   className={values.scheduleFollowUp ? "primary-button attention-panel__toggle" : "ghost-button attention-panel__toggle"}
-                  onClick={() =>
+                  onClick={() => {
+                    if (!values.scheduleFollowUp && suggestedFollowUp) {
+                      setValues((current) => ({
+                        ...current,
+                        scheduleFollowUp: true,
+                        followUpType: suggestedFollowUp.type,
+                        followUpDueDate: suggestedFollowUp.dueDate,
+                        followUpNotes: current.followUpNotes.trim() || suggestedFollowUp.note
+                      }));
+                      setFollowUpAutoMode(true);
+                      return;
+                    }
+
                     setValues((current) => ({
                       ...current,
                       scheduleFollowUp: !current.scheduleFollowUp
-                    }))
-                  }
+                    }));
+                    setFollowUpAutoMode(false);
+                  }}
                 >
                   {values.scheduleFollowUp ? "No programar control" : "Programar control"}
                 </button>
               </div>
+
+              {suggestedFollowUp ? (
+                <p className="attention-panel__state">
+                  Sugerencia automatica: {getSuggestedFollowUpLabel(suggestedFollowUp.type, suggestedFollowUp.dueDate)}
+                </p>
+              ) : null}
 
               {values.scheduleFollowUp ? (
                 <div className="modal-form__grid attention-inline-grid">
@@ -551,10 +624,13 @@ export function AttentionModal({
                       type="date"
                       value={values.followUpDueDate}
                       onChange={(event) =>
-                        setValues((current) => ({
-                          ...current,
-                          followUpDueDate: event.target.value
-                        }))
+                        {
+                          setFollowUpAutoMode(false);
+                          setValues((current) => ({
+                            ...current,
+                            followUpDueDate: event.target.value
+                          }));
+                        }
                       }
                     />
                   </label>
@@ -564,10 +640,16 @@ export function AttentionModal({
                     <select
                       value={values.followUpType}
                       onChange={(event) =>
-                        setValues((current) => ({
-                          ...current,
-                          followUpType: event.target.value
-                        }))
+                        {
+                          setFollowUpAutoMode(false);
+                          const nextType = event.target.value;
+                          const autoDueDate = getAutoFollowUpDateForType(nextType, values.date);
+                          setValues((current) => ({
+                            ...current,
+                            followUpType: nextType,
+                            followUpDueDate: autoDueDate ?? current.followUpDueDate
+                          }));
+                        }
                       }
                     >
                       {followUpTypes.map((option) => (
@@ -585,10 +667,13 @@ export function AttentionModal({
                       value={values.followUpNotes}
                       placeholder="Ej.: revisar evolucion, retiro de puntos, llamar en 7 dias"
                       onChange={(event) =>
-                        setValues((current) => ({
-                          ...current,
-                          followUpNotes: event.target.value
-                        }))
+                        {
+                          setFollowUpAutoMode(false);
+                          setValues((current) => ({
+                            ...current,
+                            followUpNotes: event.target.value
+                          }));
+                        }
                       }
                     />
                   </label>

@@ -22,6 +22,11 @@ interface EntityModalProps {
   submitLabel: string;
   fields: ModalField[];
   initialValues: Record<string, string>;
+  transformValues?: (
+    nextValues: Record<string, string>,
+    changedField: string,
+    previousValues: Record<string, string>
+  ) => Record<string, string>;
   onSubmit: (values: Record<string, string>) => void;
   onClose: () => void;
 }
@@ -32,6 +37,7 @@ export function EntityModal({
   submitLabel,
   fields,
   initialValues,
+  transformValues,
   onSubmit,
   onClose
 }: EntityModalProps) {
@@ -64,10 +70,14 @@ export function EntityModal({
   }, [onClose]);
 
   const handleChange = (name: string, value: string) => {
-    setValues((current) => ({
-      ...current,
-      [name]: value
-    }));
+    setValues((current) => {
+      const nextValues = {
+        ...current,
+        [name]: value
+      };
+
+      return transformValues ? transformValues(nextValues, name, current) : nextValues;
+    });
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
