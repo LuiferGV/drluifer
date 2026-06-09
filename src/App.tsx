@@ -1,5 +1,5 @@
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import logoWhite from "../logowhite.png";
+import logoNuevo from "../logonuevo.png";
 import { AlertBoard } from "./components/AlertBoard";
 import { AttentionModal, type AttentionFormValues } from "./components/AttentionModal";
 import { AuthScreen } from "./components/AuthScreen";
@@ -1817,7 +1817,7 @@ export default function App() {
 
       <header className="topbar">
         <div className="topbar__brand topbar__brand--logo">
-          <img className="brand-logo" src={logoWhite} alt="Dr. Luis F. Gonzalez" />
+          <img className="brand-logo" src={logoNuevo} alt="Dr. Luis F. Gonzalez" />
         </div>
 
         <div className="topbar__actions">
