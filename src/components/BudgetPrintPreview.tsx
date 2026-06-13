@@ -33,6 +33,401 @@ function buildPrintRows(budget: BudgetEntry) {
   return rows;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildStatusStyles(statusLabel: string) {
+  if (statusLabel === "Aprobado") {
+    return {
+      background: "rgba(84, 224, 196, 0.16)",
+      border: "rgba(46, 158, 128, 0.22)",
+      color: "#1f7c68"
+    };
+  }
+
+  if (statusLabel === "Rechazado") {
+    return {
+      background: "rgba(255, 142, 127, 0.14)",
+      border: "rgba(224, 107, 91, 0.24)",
+      color: "#b64e42"
+    };
+  }
+
+  return {
+    background: "rgba(250, 202, 92, 0.14)",
+    border: "rgba(224, 177, 62, 0.22)",
+    color: "#8f6421"
+  };
+}
+
+function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnType<typeof buildPrintRows>) {
+  const statusLabel = getBudgetStatusLabel(budget);
+  const statusStyles = buildStatusStyles(statusLabel);
+  const note = budget.note || "Presupuesto sujeto a reevaluacion clinica segun evolucion del caso.";
+  const tableRows = rows
+    .map(
+      (item) => `
+        <div class="budget-row ${item.detail ? "has-content" : ""}">
+          <span>${item.detail ? escapeHtml(String(item.quantity)) : ""}</span>
+          <span>${item.detail ? escapeHtml(item.detail) : ""}</span>
+          <span>${item.detail ? escapeHtml(formatGs(item.unitPrice)) : ""}</span>
+          <strong>${item.detail ? escapeHtml(formatGs(item.totalPrice)) : ""}</strong>
+        </div>
+      `
+    )
+    .join("");
+
+  return `<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>${escapeHtml(budget.budgetNumber)} - Presupuesto</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        color: #17324a;
+        font-family: "Segoe UI", Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .sheet {
+        width: 100%;
+        min-height: 0;
+        padding: 10mm 10mm 12mm;
+        background:
+          radial-gradient(circle at 100% 0%, rgba(69, 167, 255, 0.08), transparent 28%),
+          linear-gradient(180deg, #ffffff, #f7fbff);
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 62mm;
+        align-items: start;
+        gap: 10mm;
+      }
+
+      .brand {
+        display: grid;
+        justify-items: start;
+        align-content: start;
+        gap: 3mm;
+        max-width: 120mm;
+      }
+
+      .logo {
+        width: 100%;
+        max-width: 110mm;
+        max-height: 34mm;
+        object-fit: contain;
+        object-position: left center;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: #4d6d86;
+        font-size: 3.2mm;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 3mm;
+        flex-wrap: wrap;
+      }
+
+      h1 {
+        margin: 0;
+        color: #163556;
+        font-size: 6.3mm;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 9mm;
+        padding: 0 4mm;
+        border-radius: 999px;
+        border: 0.35mm solid ${statusStyles.border};
+        background: ${statusStyles.background};
+        color: ${statusStyles.color};
+        font-size: 3.6mm;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .clinic {
+        display: grid;
+        justify-items: end;
+        gap: 2mm;
+        text-align: right;
+        color: #355674;
+        font-size: 3.8mm;
+        line-height: 1.35;
+      }
+
+      .clinic > strong,
+      .clinic-line strong {
+        color: #163556;
+      }
+
+      .clinic > strong {
+        font-size: 4.2mm;
+      }
+
+      .clinic-line {
+        display: inline-flex;
+        align-items: baseline;
+        justify-content: flex-end;
+        gap: 1.5mm;
+        white-space: nowrap;
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 3mm;
+        margin-top: 7mm;
+      }
+
+      .meta-card,
+      .notes,
+      .totals {
+        display: grid;
+        gap: 1.5mm;
+        padding: 4mm;
+        border-radius: 4mm;
+        border: 0.35mm solid rgba(22, 53, 86, 0.12);
+        background: rgba(245, 250, 255, 0.92);
+      }
+
+      .meta-card span,
+      .meta-card small,
+      .notes span,
+      .totals span {
+        color: #5d7690;
+      }
+
+      .meta-card strong {
+        color: #163556;
+        font-size: 4.2mm;
+      }
+
+      .budget-table {
+        display: grid;
+        margin-top: 6mm;
+        border-radius: 4mm;
+        overflow: hidden;
+        border: 0.35mm solid rgba(22, 53, 86, 0.18);
+      }
+
+      .budget-table-head,
+      .budget-row {
+        display: grid;
+        grid-template-columns: 16mm minmax(0, 1fr) 30mm 30mm;
+      }
+
+      .budget-table-head {
+        background: linear-gradient(135deg, #163556, #23517d);
+        color: #ffffff;
+        font-size: 3.1mm;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .budget-table-head span,
+      .budget-row span,
+      .budget-row strong {
+        padding: 3.4mm 4mm;
+        border-right: 0.3mm solid rgba(22, 53, 86, 0.12);
+      }
+
+      .budget-table-head span:last-child,
+      .budget-row strong:last-child {
+        border-right: none;
+      }
+
+      .budget-body {
+        display: grid;
+      }
+
+      .budget-row {
+        min-height: 12mm;
+        border-top: 0.3mm solid rgba(22, 53, 86, 0.12);
+        background: rgba(255, 255, 255, 0.88);
+        font-size: 4mm;
+      }
+
+      .budget-row strong {
+        color: #163556;
+      }
+
+      .footer {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(72mm, 0.85fr);
+        gap: 4mm;
+        margin-top: 6mm;
+      }
+
+      .notes span,
+      .totals span {
+        font-size: 3.2mm;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .notes p {
+        margin: 0;
+        color: #294764;
+        line-height: 1.55;
+        font-size: 4mm;
+      }
+
+      .totals > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 3mm;
+      }
+
+      .totals strong {
+        color: #163556;
+        white-space: nowrap;
+        font-size: 4.4mm;
+      }
+
+      .totals .grand {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2mm;
+        padding-top: 3mm;
+        border-top: 0.3mm solid rgba(22, 53, 86, 0.14);
+      }
+
+      .totals .grand strong {
+        justify-self: end;
+        font-size: 6mm;
+        line-height: 1.05;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <article class="sheet">
+      <header class="header">
+        <div class="brand">
+          <img class="logo" src="${logoFirma}" alt="Dr. Luis F. Gonzalez V." />
+          <p class="eyebrow">Odontologia integral</p>
+          <div class="title-row">
+            <h1>Presupuesto</h1>
+            <span class="status">${escapeHtml(statusLabel)}</span>
+          </div>
+        </div>
+
+        <div class="clinic">
+          <strong>${escapeHtml(clinicData.professionalName)}</strong>
+          <span>${escapeHtml(clinicData.address)}</span>
+          <span class="clinic-line"><span>Telefono:</span><strong>${escapeHtml(clinicData.phone)}</strong></span>
+          <span class="clinic-line"><span>WhatsApp:</span><strong>${escapeHtml(clinicData.whatsapp)}</strong></span>
+        </div>
+      </header>
+
+      <section class="meta">
+        <div class="meta-card">
+          <span>Numero</span>
+          <strong>${escapeHtml(budget.budgetNumber)}</strong>
+        </div>
+        <div class="meta-card">
+          <span>Fecha</span>
+          <strong>${escapeHtml(formatDate(budget.createdAt))}</strong>
+        </div>
+        <div class="meta-card">
+          <span>Valido hasta</span>
+          <strong>${escapeHtml(formatDate(budget.validUntil))}</strong>
+        </div>
+        <div class="meta-card">
+          <span>Destinatario</span>
+          <strong>${escapeHtml(patient.fullName)}</strong>
+          <small>${escapeHtml(patient.phone || "Sin telefono")}</small>
+        </div>
+      </section>
+
+      <section class="budget-table">
+        <div class="budget-table-head">
+          <span>Cantidad</span>
+          <span>Detalle del tratamiento</span>
+          <span>Precio unitario</span>
+          <span>Total</span>
+        </div>
+        <div class="budget-body">
+          ${tableRows}
+        </div>
+      </section>
+
+      <section class="footer">
+        <div class="notes">
+          <span>Observacion</span>
+          <p>${escapeHtml(note)}</p>
+        </div>
+
+        <div class="totals">
+          <div>
+            <span>Validez</span>
+            <strong>${escapeHtml(`${budget.validityDays} dias`)}</strong>
+          </div>
+          <div class="grand">
+            <span>Total presupuestado</span>
+            <strong>${escapeHtml(formatGs(budget.totalAmount))}</strong>
+          </div>
+        </div>
+      </section>
+    </article>
+
+    <script>
+      window.addEventListener("load", () => {
+        window.setTimeout(() => {
+          window.focus();
+          window.print();
+        }, 250);
+      });
+
+      window.addEventListener("afterprint", () => {
+        window.close();
+      });
+    </script>
+  </body>
+</html>`;
+}
+
 export function BudgetPrintPreview({
   patient,
   budget,
@@ -50,6 +445,18 @@ export function BudgetPrintPreview({
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [onClose]);
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank", "width=1100,height=900");
+    if (!printWindow) {
+      window.alert("No se pudo abrir la ventana de impresion. Revisa si el navegador bloqueo la ventana emergente.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(buildPrintDocument(patient, budget, printRows));
+    printWindow.document.close();
+  };
 
   return (
     <div className="modal-shell budget-print-portal" role="presentation">
@@ -75,7 +482,7 @@ export function BudgetPrintPreview({
             <button type="button" className="outline-button" onClick={onClose}>
               Cerrar
             </button>
-            <button type="button" className="primary-button" onClick={() => window.print()}>
+            <button type="button" className="primary-button" onClick={handlePrint}>
               Imprimir
             </button>
           </div>
