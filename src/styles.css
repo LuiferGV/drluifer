@@ -1675,8 +1675,8 @@ a {
 }
 
 .budget-sheet__logo {
-  width: min(360px, 100%);
-  max-height: 110px;
+  width: min(410px, 100%);
+  max-height: 126px;
   height: auto;
   object-fit: contain;
   object-position: center;
@@ -1708,7 +1708,8 @@ a {
   margin: 0;
   color: #163556;
   font-family: "Sora", sans-serif;
-  font-size: clamp(2.3rem, 4vw, 3rem);
+  font-size: clamp(1.65rem, 2.5vw, 2.15rem);
+  font-weight: 800;
 }
 
 .budget-sheet__status {
@@ -1892,19 +1893,21 @@ a {
 
 .budget-sheet__totals .is-grand {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
+  grid-template-columns: 1fr;
+  justify-items: start;
+  gap: 8px;
   padding-top: 10px;
   border-top: 1px solid rgba(22, 53, 86, 0.14);
 }
 
 .budget-sheet__totals .is-grand span {
-  max-width: 132px;
+  max-width: none;
   line-height: 1.35;
 }
 
 .budget-sheet__totals .is-grand strong {
-  font-size: clamp(1.25rem, 2.2vw, 1.85rem);
+  justify-self: end;
+  font-size: clamp(1.15rem, 2vw, 1.65rem);
   line-height: 1.05;
   text-align: right;
 }
