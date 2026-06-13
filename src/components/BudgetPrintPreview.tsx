@@ -99,8 +99,14 @@ export function BudgetPrintPreview({
             <div className="budget-sheet__clinic">
               <strong>{clinicData.professionalName}</strong>
               <span>{clinicData.address}</span>
-              <span>Telefono: {clinicData.phone}</span>
-              <span>WhatsApp: {clinicData.whatsapp}</span>
+              <span className="budget-sheet__clinic-line">
+                <span>Telefono:</span>
+                <strong>{clinicData.phone}</strong>
+              </span>
+              <span className="budget-sheet__clinic-line">
+                <span>WhatsApp:</span>
+                <strong>{clinicData.whatsapp}</strong>
+              </span>
             </div>
           </header>
 

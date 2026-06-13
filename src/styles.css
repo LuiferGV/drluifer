@@ -1660,36 +1660,39 @@ a {
 }
 
 .budget-sheet__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  align-items: start;
+  gap: 26px;
 }
 
 .budget-sheet__brand {
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 16px;
+  padding-top: 4px;
 }
 
 .budget-sheet__logo {
-  width: min(220px, 100%);
-  max-height: 84px;
+  width: min(360px, 100%);
+  max-height: 110px;
   height: auto;
   object-fit: contain;
-  object-position: left center;
+  object-position: center;
 }
 
 .budget-sheet__brand-copy {
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
 }
 
 .budget-sheet__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
 }
 
 .budget-sheet__eyebrow {
@@ -1705,13 +1708,14 @@ a {
   margin: 0;
   color: #163556;
   font-family: "Sora", sans-serif;
-  font-size: 2.25rem;
+  font-size: clamp(2.3rem, 4vw, 3rem);
 }
 
 .budget-sheet__status {
   min-height: 32px;
   padding: 0 12px;
   backdrop-filter: none;
+  white-space: nowrap;
 }
 
 .budget-sheet__status.status-pill--success {
@@ -1736,13 +1740,35 @@ a {
 .budget-sheet__clinic {
   display: grid;
   justify-items: end;
-  gap: 4px;
+  align-content: start;
+  gap: 8px;
   text-align: right;
   color: #355674;
+  font-size: 0.92rem;
+  line-height: 1.35;
 }
 
 .budget-sheet__clinic strong {
   color: #163556;
+}
+
+.budget-sheet__clinic > strong {
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+
+.budget-sheet__clinic-line {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.budget-sheet__clinic-line strong {
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .budget-sheet__meta {
@@ -1822,7 +1848,7 @@ a {
 
 .budget-sheet__footer {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.75fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
   gap: 18px;
   margin-top: 24px;
 }
@@ -1861,15 +1887,26 @@ a {
 
 .budget-sheet__totals strong {
   color: #163556;
+  white-space: nowrap;
 }
 
 .budget-sheet__totals .is-grand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   padding-top: 10px;
   border-top: 1px solid rgba(22, 53, 86, 0.14);
 }
 
+.budget-sheet__totals .is-grand span {
+  max-width: 132px;
+  line-height: 1.35;
+}
+
 .budget-sheet__totals .is-grand strong {
-  font-size: 1.45rem;
+  font-size: clamp(1.25rem, 2.2vw, 1.85rem);
+  line-height: 1.05;
+  text-align: right;
 }
 
 .quick-grid {
