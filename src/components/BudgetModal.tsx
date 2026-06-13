@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildBudgetValidUntil } from "../lib/budgets";
 import { formatDate, formatGs } from "../lib/date";
+import type { BudgetStatus } from "../types/clinic";
 
 interface PatientOption {
   label: string;
@@ -16,6 +17,7 @@ export interface BudgetLineItemForm {
 
 export interface BudgetFormValues {
   patientTarget: string;
+  status: BudgetStatus;
   createdAt: string;
   validityDays: "15" | "30";
   validUntil: string;
@@ -99,10 +101,7 @@ export function BudgetModal({
     [values.items]
   );
 
-  const totalAmount = useMemo(
-    () => budgetItems.reduce((sum, item) => sum + item.totalPrice, 0),
-    [budgetItems]
-  );
+  const totalAmount = useMemo(() => budgetItems.reduce((sum, item) => sum + item.totalPrice, 0), [budgetItems]);
 
   const updateValues = (updater: (current: BudgetFormValues) => BudgetFormValues) => {
     setValues((current) => {
@@ -277,6 +276,25 @@ export function BudgetModal({
                     <option value="30">30 dias</option>
                   </select>
                 </label>
+
+                <label className="modal-field">
+                  <span>Estado</span>
+                  <select
+                    value={values.status}
+                    onChange={(event) =>
+                      updateValues((current) => ({
+                        ...current,
+                        status: event.target.value === "Aprobado" || event.target.value === "Rechazado"
+                          ? event.target.value
+                          : "Pendiente"
+                      }))
+                    }
+                  >
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Aprobado">Aprobado</option>
+                    <option value="Rechazado">Rechazado</option>
+                  </select>
+                </label>
               </div>
 
               <div className="budget-validity-panel">
@@ -313,6 +331,11 @@ export function BudgetModal({
                 <strong>{formatGs(totalAmount)}</strong>
               </div>
 
+              <div className="budget-validity-panel">
+                <span>Estado actual</span>
+                <strong>{values.status}</strong>
+              </div>
+
               <div className="stack-list compact-list">
                 {budgetItems
                   .filter((item) => item.detail.trim())
@@ -329,7 +352,7 @@ export function BudgetModal({
                   ))}
                 {budgetItems.every((item) => !item.detail.trim()) ? (
                   <div className="empty-panel empty-panel--tight">
-                    <p>El resumen aparecerá mientras cargues las filas del presupuesto.</p>
+                    <p>El resumen aparecera mientras cargues las filas del presupuesto.</p>
                   </div>
                 ) : null}
               </div>

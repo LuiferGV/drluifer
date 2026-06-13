@@ -77,7 +77,7 @@ type SyncState = "idle" | "saving" | "saved" | "error";
 type ModalState =
   | { type: "patient-create" }
   | { type: "patient-edit"; patientId: string }
-  | { type: "record-create"; kind: RecordKind; patientId?: string }
+  | { type: "record-create"; kind: RecordKind; patientId?: string; prefillFromId?: string }
   | { type: "record-edit"; kind: RecordKind; patientId: string; itemId: string }
   | { type: "budget-preview"; patientId: string; budgetId: string }
   | null;
@@ -381,6 +381,7 @@ function buildBudgetEntryFromForm(values: BudgetFormValues, budgetId?: string, e
   return syncBudgetEntry({
     id: entryId,
     budgetNumber: existingBudgetNumber ?? createBudgetNumber(createdAt, entryId),
+    status: values.status,
     createdAt,
     validityDays,
     validUntil: values.validUntil,
@@ -670,6 +671,10 @@ export default function App() {
     }
 
     setModalState({ type: "record-create", kind: "budget" });
+  };
+
+  const openBudgetDuplicate = (patientId: string, budgetId: string) => {
+    setModalState({ type: "record-create", kind: "budget", patientId, prefillFromId: budgetId });
   };
 
   const openCreateRecord = (kind: RecordKind, patientId: string) => {
@@ -1532,13 +1537,16 @@ export default function App() {
     };
   };
 
-  const getBudgetInitialValues = (patientId?: string, budgetId?: string): BudgetFormValues => {
+  const getBudgetInitialValues = (patientId?: string, budgetId?: string, duplicateBudgetId?: string): BudgetFormValues => {
     const patient = patientId ? clinicPatients.find((entry) => entry.id === patientId) ?? null : null;
     const budget = budgetId ? patient?.budgets.find((entry) => entry.id === budgetId) ?? null : null;
+    const duplicateSource =
+      !budget && duplicateBudgetId ? patient?.budgets.find((entry) => entry.id === duplicateBudgetId) ?? null : null;
 
     if (budget) {
       return {
         patientTarget: patientId ?? "",
+        status: budget.status,
         createdAt: budget.createdAt,
         validityDays: budget.validityDays === 30 ? "30" : "15",
         validUntil: budget.validUntil,
@@ -1555,8 +1563,29 @@ export default function App() {
       };
     }
 
+    if (duplicateSource) {
+      return {
+        patientTarget: patientId ?? "",
+        status: "Pendiente",
+        createdAt: todayKey(),
+        validityDays: duplicateSource.validityDays === 30 ? "30" : "15",
+        validUntil: "",
+        note: duplicateSource.note,
+        items:
+          duplicateSource.items.length > 0
+            ? duplicateSource.items.map((item) => ({
+                id: createId("budget-item"),
+                quantity: String(item.quantity),
+                detail: item.detail,
+                unitPrice: String(item.unitPrice)
+              }))
+            : [createBudgetLineFormItem()]
+      };
+    }
+
     return {
       patientTarget: patientId ?? "",
+      status: "Pendiente",
       createdAt: todayKey(),
       validityDays: "15",
       validUntil: "",
@@ -1596,6 +1625,7 @@ export default function App() {
           patient={patient}
           budget={budget}
           onClose={closeModals}
+          onDuplicate={() => openBudgetDuplicate(patient.id, budget.id)}
           onEdit={() =>
             setModalState({
               type: "record-edit",
@@ -1707,19 +1737,29 @@ export default function App() {
     }
 
     if (modalState.kind === "budget") {
+      const duplicateBudgetId = modalState.type === "record-create" ? modalState.prefillFromId : undefined;
+      const budgetTitle =
+        modalState.type === "record-create"
+          ? duplicateBudgetId
+            ? "Duplicar presupuesto"
+            : "Nuevo presupuesto"
+          : "Editar presupuesto";
+      const budgetSubtitle = modalState.patientId
+        ? duplicateBudgetId
+          ? `Paciente: ${patientLabel}. Tomamos el presupuesto anterior como base para que solo ajustes lo necesario.`
+          : `Paciente: ${patientLabel}`
+        : "Elige paciente, carga filas y deja el documento listo para imprimir.";
+
       return (
         <BudgetModal
-          title={modalState.type === "record-create" ? "Nuevo presupuesto" : "Editar presupuesto"}
-          subtitle={
-            modalState.patientId
-              ? `Paciente: ${patientLabel}`
-              : "Elige paciente, carga filas y deja el documento listo para imprimir."
-          }
+          title={budgetTitle}
+          subtitle={budgetSubtitle}
           submitLabel="Guardar presupuesto"
           patientOptions={patientOptions}
           initialValues={getBudgetInitialValues(
             modalState.patientId,
-            modalState.type === "record-edit" ? modalState.itemId : undefined
+            modalState.type === "record-edit" ? modalState.itemId : undefined,
+            duplicateBudgetId
           )}
           lockPatient={Boolean(modalState.patientId)}
           lockedPatientLabel={patientLabel}
@@ -1907,6 +1947,7 @@ export default function App() {
                   onEditRecord={openEditRecord}
                   onDeleteRecord={askDeleteRecord}
                   onPreviewBudget={openBudgetPreview}
+                  onDuplicateBudget={openBudgetDuplicate}
                 />
               </aside>
             </div>

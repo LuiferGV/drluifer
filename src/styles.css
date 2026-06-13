@@ -241,6 +241,12 @@ a {
   color: #aef9eb;
 }
 
+.status-pill--warning {
+  background: rgba(250, 202, 92, 0.14);
+  border-color: rgba(250, 202, 92, 0.22);
+  color: #ffe39a;
+}
+
 .status-pill--soon {
   background: rgba(84, 224, 196, 0.12);
   border-color: rgba(84, 224, 196, 0.2);
@@ -1520,6 +1526,7 @@ a {
 .budget-inline-grid {
   display: grid;
   gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .budget-locked-patient,
@@ -1661,14 +1668,28 @@ a {
 
 .budget-sheet__brand {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 18px;
 }
 
 .budget-sheet__logo {
-  width: 112px;
+  width: min(220px, 100%);
+  max-height: 84px;
   height: auto;
   object-fit: contain;
+  object-position: left center;
+}
+
+.budget-sheet__brand-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.budget-sheet__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .budget-sheet__eyebrow {
@@ -1685,6 +1706,31 @@ a {
   color: #163556;
   font-family: "Sora", sans-serif;
   font-size: 2.25rem;
+}
+
+.budget-sheet__status {
+  min-height: 32px;
+  padding: 0 12px;
+  backdrop-filter: none;
+}
+
+.budget-sheet__status.status-pill--success {
+  background: rgba(84, 224, 196, 0.16);
+  border-color: rgba(46, 158, 128, 0.22);
+  color: #1f7c68;
+}
+
+.budget-sheet__status.status-pill--critical {
+  background: rgba(255, 142, 127, 0.14);
+  border-color: rgba(224, 107, 91, 0.24);
+  color: #b64e42;
+}
+
+.budget-sheet__status.status-pill--warning,
+.budget-sheet__status.status-pill--calm {
+  background: rgba(250, 202, 92, 0.14);
+  border-color: rgba(224, 177, 62, 0.22);
+  color: #8f6421;
 }
 
 .budget-sheet__clinic {
@@ -2167,6 +2213,11 @@ a {
   }
 
   .budget-sheet__brand {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .budget-sheet__title-row {
     align-items: flex-start;
     flex-direction: column;
   }

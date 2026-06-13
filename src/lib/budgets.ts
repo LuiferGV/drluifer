@@ -1,5 +1,5 @@
 import { addDays, formatDate } from "./date";
-import type { BudgetEntry, BudgetItem } from "../types/clinic";
+import type { BudgetEntry, BudgetItem, BudgetStatus } from "../types/clinic";
 
 function parseIsoDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
@@ -38,6 +38,16 @@ export function createBudgetNumber(createdAt: string, seed: string): string {
   return `P-${compactDate}-${compactSeed}`;
 }
 
+export function normalizeBudgetStatus(value?: string): BudgetStatus {
+  if (value === "Aprobado" || value === "Rechazado") return value;
+  return "Pendiente";
+}
+
+export function isBudgetValid(entry: BudgetEntry): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  return entry.validUntil >= today;
+}
+
 export function syncBudgetEntry(entry: BudgetEntry): BudgetEntry {
   const normalizedItems = entry.items.map((item) => syncBudgetItem(item)).filter((item) => item.detail.trim());
   const validityDays = entry.validityDays === 30 ? 30 : 15;
@@ -45,6 +55,7 @@ export function syncBudgetEntry(entry: BudgetEntry): BudgetEntry {
 
   return {
     ...entry,
+    status: normalizeBudgetStatus(entry.status),
     createdAt,
     validityDays,
     validUntil: entry.validUntil || buildBudgetValidUntil(createdAt, validityDays),
@@ -65,10 +76,19 @@ export function getBudgetSummary(entry: BudgetEntry): string {
 }
 
 export function getBudgetStatusLabel(entry: BudgetEntry): string {
-  const today = new Date().toISOString().slice(0, 10);
-  return entry.validUntil >= today ? "Vigente" : "Vencido";
+  return normalizeBudgetStatus(entry.status);
+}
+
+export function getBudgetStatusClassName(entry: BudgetEntry): string {
+  const status = normalizeBudgetStatus(entry.status);
+
+  if (status === "Aprobado") return "status-pill status-pill--success";
+  if (status === "Rechazado") return "status-pill status-pill--critical";
+  return isBudgetValid(entry) ? "status-pill status-pill--warning" : "status-pill status-pill--calm";
 }
 
 export function getBudgetMetaLabel(entry: BudgetEntry): string {
-  return `Emitido ${formatDate(entry.createdAt)} · valido hasta ${formatDate(entry.validUntil)}`;
+  return `Emitido ${formatDate(entry.createdAt)} - valido hasta ${formatDate(entry.validUntil)} - ${
+    isBudgetValid(entry) ? "vigente" : "vencido"
+  }`;
 }

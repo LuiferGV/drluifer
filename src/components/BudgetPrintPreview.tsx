@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
-import logoNuevo from "../../logonuevo.png";
+import logoFirma from "../../logonegrofirma.png";
+import { getBudgetStatusClassName, getBudgetStatusLabel } from "../lib/budgets";
 import { formatDate, formatGs } from "../lib/date";
 import type { BudgetEntry, Patient } from "../types/clinic";
 
@@ -8,6 +9,7 @@ interface BudgetPrintPreviewProps {
   budget: BudgetEntry;
   onClose: () => void;
   onEdit: () => void;
+  onDuplicate: () => void;
 }
 
 const clinicData = {
@@ -35,7 +37,8 @@ export function BudgetPrintPreview({
   patient,
   budget,
   onClose,
-  onEdit
+  onEdit,
+  onDuplicate
 }: BudgetPrintPreviewProps) {
   const printRows = useMemo(() => buildPrintRows(budget), [budget]);
 
@@ -57,10 +60,15 @@ export function BudgetPrintPreview({
           <div>
             <p className="eyebrow">Impresion</p>
             <h2 id="budget-print-title">Presupuesto listo para imprimir</h2>
-            <p className="modal-card__subtitle">La ficha guarda solo los datos. Esta hoja se arma recien para vista previa y papel.</p>
+            <p className="modal-card__subtitle">
+              La ficha guarda solo los datos. Esta hoja se arma recien para vista previa y papel.
+            </p>
           </div>
 
           <div className="budget-preview__actions">
+            <button type="button" className="outline-button" onClick={onDuplicate}>
+              Duplicar
+            </button>
             <button type="button" className="outline-button" onClick={onEdit}>
               Editar
             </button>
@@ -76,10 +84,15 @@ export function BudgetPrintPreview({
         <article className="budget-sheet">
           <header className="budget-sheet__header">
             <div className="budget-sheet__brand">
-              <img className="budget-sheet__logo" src={logoNuevo} alt="Dr. Luis F. Gonzalez V." />
-              <div>
+              <img className="budget-sheet__logo" src={logoFirma} alt="Dr. Luis F. Gonzalez V." />
+              <div className="budget-sheet__brand-copy">
                 <p className="budget-sheet__eyebrow">Odontologia integral</p>
-                <h1>Presupuesto</h1>
+                <div className="budget-sheet__title-row">
+                  <h1>Presupuesto</h1>
+                  <span className={`budget-sheet__status ${getBudgetStatusClassName(budget)}`}>
+                    {getBudgetStatusLabel(budget)}
+                  </span>
+                </div>
               </div>
             </div>
 

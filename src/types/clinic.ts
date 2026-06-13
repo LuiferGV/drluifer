@@ -85,9 +85,12 @@ export interface BudgetItem {
   totalPrice: number;
 }
 
+export type BudgetStatus = "Pendiente" | "Aprobado" | "Rechazado";
+
 export interface BudgetEntry {
   id: string;
   budgetNumber: string;
+  status: BudgetStatus;
   createdAt: string;
   validityDays: 15 | 30;
   validUntil: string;

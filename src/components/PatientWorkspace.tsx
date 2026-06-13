@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { getBudgetMetaLabel, getBudgetStatusLabel, getBudgetSummary } from "../lib/budgets";
+import {
+  getBudgetMetaLabel,
+  getBudgetStatusClassName,
+  getBudgetStatusLabel,
+  getBudgetSummary
+} from "../lib/budgets";
 import {
   getFinanceTimelineLabel,
   getFinanceStatusLabel,
@@ -28,6 +33,7 @@ interface PatientWorkspaceProps {
   onEditRecord: (kind: RecordKind, patientId: string, itemId: string) => void;
   onDeleteRecord: (kind: RecordKind, patientId: string, itemId: string) => void;
   onPreviewBudget: (patientId: string, budgetId: string) => void;
+  onDuplicateBudget: (patientId: string, budgetId: string) => void;
 }
 
 const tabs: Array<{ id: PatientTab; label: string }> = [
@@ -67,7 +73,8 @@ export function PatientWorkspace({
   onCreateRecord,
   onEditRecord,
   onDeleteRecord,
-  onPreviewBudget
+  onPreviewBudget,
+  onDuplicateBudget
 }: PatientWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<PatientTab>("overview");
 
@@ -488,7 +495,7 @@ export function PatientWorkspace({
                 <div className="list-card__content">
                   <div className="list-card__title-row">
                     <h3>{budget.budgetNumber}</h3>
-                    <span className="status-pill status-pill--neutral">{getBudgetStatusLabel(budget)}</span>
+                    <span className={getBudgetStatusClassName(budget)}>{getBudgetStatusLabel(budget)}</span>
                   </div>
                   <p className="list-card__subtitle">{getBudgetMetaLabel(budget)}</p>
                   <p className="list-card__meta">{getBudgetSummary(budget)}</p>
@@ -503,6 +510,13 @@ export function PatientWorkspace({
                     onClick={() => onPreviewBudget(patient.id, budget.id)}
                   >
                     Ver e imprimir
+                  </button>
+                  <button
+                    type="button"
+                    className="outline-button"
+                    onClick={() => onDuplicateBudget(patient.id, budget.id)}
+                  >
+                    Duplicar
                   </button>
                   <button
                     type="button"

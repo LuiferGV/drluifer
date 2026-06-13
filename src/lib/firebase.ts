@@ -1,7 +1,7 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { getDatabase, onValue, ref, remove, set } from "firebase/database";
-import { sortBudgetsByDateDesc, syncBudgetEntry } from "./budgets";
+import { normalizeBudgetStatus, sortBudgetsByDateDesc, syncBudgetEntry } from "./budgets";
 import { createLegacyPayments, sortFinancesByActivity, syncFinanceEntry } from "./financeEntries";
 import type { Expense, ExpenseScope, FinanceTone, Patient } from "../types/clinic";
 
@@ -151,6 +151,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
       syncBudgetEntry({
         id: String(budget.id || `budget-${index + 1}`),
         budgetNumber: String(budget.budgetNumber || ""),
+        status: normalizeBudgetStatus(String(budget.status || "Pendiente")),
         createdAt: String(budget.createdAt || new Date().toISOString().slice(0, 10)).slice(0, 10),
         validityDays: Number(budget.validityDays || 15) === 30 ? 30 : 15,
         validUntil: String(budget.validUntil || ""),
