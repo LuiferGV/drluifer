@@ -1647,6 +1647,7 @@ a {
 }
 
 .budget-sheet {
+  box-sizing: border-box;
   width: min(210mm, 100%);
   min-height: 297mm;
   margin: 0 auto;
@@ -2364,24 +2365,43 @@ a {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
   html,
-  body {
+  body,
+  #root {
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
     background: #fff !important;
   }
 
-  body * {
-    visibility: hidden;
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #root > *:not(.budget-print-portal) {
+    display: none !important;
+  }
+
+  .budget-print-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
   }
 
   .budget-print-portal,
   .budget-print-portal * {
-    visibility: visible;
-  }
-
-  .budget-print-portal {
-    position: static !important;
-    inset: auto !important;
-    background: #fff !important;
+    visibility: visible !important;
   }
 
   .budget-print-portal .modal-backdrop,
@@ -2391,6 +2411,7 @@ a {
 
   .budget-preview {
     width: auto !important;
+    margin: 0 !important;
     max-height: none !important;
     overflow: visible !important;
     padding: 0 !important;
@@ -2401,11 +2422,25 @@ a {
   }
 
   .budget-sheet {
-    width: 210mm !important;
-    min-height: 297mm !important;
-    margin: 0 auto !important;
-    padding: 18mm 16mm 16mm !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 10mm 10mm 12mm !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+
+  .budget-sheet__header {
+    grid-template-columns: minmax(0, 1fr) 62mm !important;
+    gap: 10mm !important;
+  }
+
+  .budget-sheet__table-head,
+  .budget-sheet__row {
+    grid-template-columns: 16mm minmax(0, 1fr) 30mm 30mm !important;
   }
 }
