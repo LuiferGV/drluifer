@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getBudgetMetaLabel, getBudgetStatusLabel, getBudgetSummary } from "../lib/budgets";
 import {
   getFinanceTimelineLabel,
   getFinanceStatusLabel,
@@ -17,7 +18,7 @@ import {
 import { buildWhatsAppLink, formatDate, formatGs } from "../lib/date";
 import type { Patient, PatientTab } from "../types/clinic";
 
-export type RecordKind = "treatment" | "evolution" | "followup" | "finance" | "payment" | "expense" | "note";
+export type RecordKind = "treatment" | "evolution" | "followup" | "budget" | "finance" | "payment" | "expense" | "note";
 
 interface PatientWorkspaceProps {
   patient: Patient | null;
@@ -26,6 +27,7 @@ interface PatientWorkspaceProps {
   onCreateRecord: (kind: RecordKind, patientId: string) => void;
   onEditRecord: (kind: RecordKind, patientId: string, itemId: string) => void;
   onDeleteRecord: (kind: RecordKind, patientId: string, itemId: string) => void;
+  onPreviewBudget: (patientId: string, budgetId: string) => void;
 }
 
 const tabs: Array<{ id: PatientTab; label: string }> = [
@@ -33,6 +35,7 @@ const tabs: Array<{ id: PatientTab; label: string }> = [
   { id: "treatments", label: "Tratamientos" },
   { id: "evolution", label: "Evolucion" },
   { id: "followups", label: "Seguimientos" },
+  { id: "budgets", label: "Presupuestos" },
   { id: "finances", label: "Finanzas" },
   { id: "notes", label: "Notas" }
 ];
@@ -42,6 +45,7 @@ const createLabels: Record<PatientTab, string> = {
   treatments: "Nueva atencion",
   evolution: "Nueva evolucion",
   followups: "Nuevo seguimiento",
+  budgets: "Nuevo presupuesto",
   finances: "Registrar pago",
   notes: "Nueva nota"
 };
@@ -51,6 +55,7 @@ const tabKinds: Record<PatientTab, RecordKind> = {
   treatments: "treatment",
   evolution: "evolution",
   followups: "followup",
+  budgets: "budget",
   finances: "payment",
   notes: "note"
 };
@@ -61,7 +66,8 @@ export function PatientWorkspace({
   onDeletePatient,
   onCreateRecord,
   onEditRecord,
-  onDeleteRecord
+  onDeleteRecord,
+  onPreviewBudget
 }: PatientWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<PatientTab>("overview");
 
@@ -333,6 +339,10 @@ export function PatientWorkspace({
                 <strong>Programar control</strong>
                 <span>Seguimiento clinico sin salir de la ficha.</span>
               </button>
+              <button type="button" className="quick-card" onClick={() => onCreateRecord("budget", patient.id)}>
+                <strong>Presupuesto imprimible</strong>
+                <span>Carga cantidades y precios una vez, guarda y reimprime cuando quieras.</span>
+              </button>
             </div>
           </section>
         </div>
@@ -465,6 +475,55 @@ export function PatientWorkspace({
           ) : (
             <div className="empty-panel empty-panel--tight">
               <p>No hay seguimientos cargados todavia.</p>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {activeTab === "budgets" ? (
+        <div className="stack-list">
+          {patient.budgets.length > 0 ? (
+            patient.budgets.map((budget) => (
+              <article key={budget.id} className="list-card">
+                <div className="list-card__content">
+                  <div className="list-card__title-row">
+                    <h3>{budget.budgetNumber}</h3>
+                    <span className="status-pill status-pill--neutral">{getBudgetStatusLabel(budget)}</span>
+                  </div>
+                  <p className="list-card__subtitle">{getBudgetMetaLabel(budget)}</p>
+                  <p className="list-card__meta">{getBudgetSummary(budget)}</p>
+                  <p className="list-card__meta">
+                    {budget.items.length} item(s) | Total {formatGs(budget.totalAmount)}
+                  </p>
+                </div>
+                <div className="list-card__actions">
+                  <button
+                    type="button"
+                    className="outline-button"
+                    onClick={() => onPreviewBudget(patient.id, budget.id)}
+                  >
+                    Ver e imprimir
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => onEditRecord("budget", patient.id, budget.id)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-button danger-button--ghost"
+                    onClick={() => onDeleteRecord("budget", patient.id, budget.id)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="empty-panel empty-panel--tight">
+              <p>No hay presupuestos guardados todavia.</p>
             </div>
           )}
         </div>

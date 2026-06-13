@@ -193,6 +193,7 @@ export const mockPatients: Patient[] = [
       note("n-ana-1", -7, "Prefiere turnos de manana y responde rapido por WhatsApp."),
       note("n-ana-2", -2, "Se mostro tranquila y motivada con la evolucion.")
     ],
+    budgets: [],
     finances: [
       finance("m-ana-1", -12, "Raspaje y alisado", 450000, 450000, "Cobrado en el dia", "Dr. Luis F. Gonzalez", "t-ana-1"),
       finance(
@@ -266,6 +267,7 @@ export const mockPatients: Patient[] = [
       followUp("f-carlos-2", -18, 25, "Control general", "Implante en curso", "Pendiente", "Coordinar radiografia de control")
     ],
     notes: [note("n-carlos-1", -5, "Solicito recordatorio 24 horas antes de la cita.")],
+    budgets: [],
     finances: [
       finance("m-carlos-1", -18, "Implante unitario", 4200000, 2500000, "Abono la sena inicial", "Dr. Luis F. Gonzalez", "t-carlos-1"),
       finance("m-carlos-2", -5, "Control de evolucion", 0, 0, "Incluido dentro del plan", "Dr. Luis F. Gonzalez", "t-carlos-2")
@@ -331,6 +333,7 @@ export const mockPatients: Patient[] = [
       followUp("f-paula-2", -20, 180, "Mantenimiento periodontal 6 meses", "Control preventivo", "Pendiente", "Recordatorio automatico")
     ],
     notes: [note("n-paula-1", -1, "Muy puntual. Prefiere comunicacion breve y clara.")],
+    budgets: [],
     finances: [
       finance("m-paula-1", -20, "Restauracion estetica", 650000, 650000, "Cobro completo por transferencia", "Dr. Luis F. Gonzalez", "t-paula-1"),
       finance("m-paula-2", -1, "Consulta de control", 120000, 120000, "Pago con tarjeta", "Dr. Luis F. Gonzalez", "t-paula-2")
@@ -392,6 +395,7 @@ export const mockPatients: Patient[] = [
       followUp("f-rodrigo-2", -32, 22, "Control general", "Reinicio de plan", "Pendiente", "Llamar para confirmar continuidad")
     ],
     notes: [note("n-rodrigo-1", -12, "Le cuesta cerrar horario. Conviene ofrecer dos opciones concretas.")],
+    budgets: [],
     finances: [
       finance("m-rodrigo-1", -32, "Inicio de endodoncia", 900000, 300000, "Saldo a revisar segun continuidad", "Dr. Marta Acosta", "t-rodrigo-1")
     ],

@@ -21,6 +21,7 @@ export type PatientTab =
   | "treatments"
   | "evolution"
   | "followups"
+  | "budgets"
   | "finances"
   | "notes";
 
@@ -76,6 +77,25 @@ export interface NoteEntry {
   text: string;
 }
 
+export interface BudgetItem {
+  id: string;
+  quantity: number;
+  detail: string;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface BudgetEntry {
+  id: string;
+  budgetNumber: string;
+  createdAt: string;
+  validityDays: 15 | 30;
+  validUntil: string;
+  note: string;
+  items: BudgetItem[];
+  totalAmount: number;
+}
+
 export interface FinanceEntry {
   id: string;
   date: string;
@@ -119,6 +139,7 @@ export interface Patient {
   evolutions: EvolutionEntry[];
   followUps: FollowUp[];
   notes: NoteEntry[];
+  budgets: BudgetEntry[];
   finances: FinanceEntry[];
   patientExpenses: Expense[];
 }

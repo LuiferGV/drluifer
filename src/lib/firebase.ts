@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { getDatabase, onValue, ref, remove, set } from "firebase/database";
+import { sortBudgetsByDateDesc, syncBudgetEntry } from "./budgets";
 import { createLegacyPayments, sortFinancesByActivity, syncFinanceEntry } from "./financeEntries";
 import type { Expense, ExpenseScope, FinanceTone, Patient } from "../types/clinic";
 
@@ -145,6 +146,26 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
   const patientExpenses = normalizeCollection<Record<string, unknown>>(patientExpensesSource).map((expense, index) =>
     normalizeExpense(String(expense.id || `patient-expense-${index + 1}`), expense, "patient")
   );
+  const budgets = sortBudgetsByDateDesc(
+    normalizeCollection<Record<string, unknown>>(rawPatient.budgets).map((budget, index) =>
+      syncBudgetEntry({
+        id: String(budget.id || `budget-${index + 1}`),
+        budgetNumber: String(budget.budgetNumber || ""),
+        createdAt: String(budget.createdAt || new Date().toISOString().slice(0, 10)).slice(0, 10),
+        validityDays: Number(budget.validityDays || 15) === 30 ? 30 : 15,
+        validUntil: String(budget.validUntil || ""),
+        note: String(budget.note || ""),
+        items: normalizeCollection<Record<string, unknown>>(budget.items).map((item, itemIndex) => ({
+          id: String(item.id || `budget-item-${itemIndex + 1}`),
+          quantity: Number(item.quantity || 0),
+          detail: String(item.detail || ""),
+          unitPrice: Number(item.unitPrice || 0),
+          totalPrice: Number(item.totalPrice || 0)
+        })),
+        totalAmount: Number(budget.totalAmount || 0)
+      })
+    )
+  );
 
   return {
     id: rawId,
@@ -169,6 +190,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
     evolutions: normalizeCollection<Patient["evolutions"][number]>(rawPatient.evolutions),
     followUps: normalizeCollection<Patient["followUps"][number]>(rawPatient.followUps),
     notes: normalizeCollection<Patient["notes"][number]>(rawPatient.notes),
+    budgets,
     finances: orderedFinances,
     patientExpenses
   };

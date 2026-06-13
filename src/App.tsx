@@ -3,6 +3,8 @@ import logoNuevo from "../logonuevo.png";
 import { AlertBoard } from "./components/AlertBoard";
 import { AttentionModal, type AttentionFormValues } from "./components/AttentionModal";
 import { AuthScreen } from "./components/AuthScreen";
+import { BudgetModal, type BudgetFormValues } from "./components/BudgetModal";
+import { BudgetPrintPreview } from "./components/BudgetPrintPreview";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { EntityModal, type ModalField } from "./components/EntityModal";
 import { MetricCard } from "./components/MetricCard";
@@ -16,6 +18,12 @@ import {
   hasRealtimeDatabaseConfig,
   savePatient
 } from "./lib/firebase";
+import {
+  createBudgetItem,
+  createBudgetNumber,
+  sortBudgetsByDateDesc,
+  syncBudgetEntry
+} from "./lib/budgets";
 import {
   appendPaymentToFinance,
   createFinanceEntry,
@@ -49,6 +57,7 @@ import {
 } from "./lib/followUpRules";
 import type {
   AlertFilter,
+  BudgetEntry,
   Expense,
   EvolutionEntry,
   FinanceEntry,
@@ -70,6 +79,7 @@ type ModalState =
   | { type: "patient-edit"; patientId: string }
   | { type: "record-create"; kind: RecordKind; patientId?: string }
   | { type: "record-edit"; kind: RecordKind; patientId: string; itemId: string }
+  | { type: "budget-preview"; patientId: string; budgetId: string }
   | null;
 
 type DeleteIntent =
@@ -342,6 +352,42 @@ function getAttentionSuccessMessage(treatmentsCount: number, createdPatient: boo
       : `${treatmentsCount} tratamientos guardados en Firebase.`;
 
   return hasFollowUp ? `${baseMessage} Control programado.` : baseMessage;
+}
+
+function createBudgetLineFormItem(quantity = "1", detail = "", unitPrice = ""): BudgetFormValues["items"][number] {
+  return {
+    id: createId("budget-item"),
+    quantity,
+    detail,
+    unitPrice
+  };
+}
+
+function buildBudgetEntryFromForm(values: BudgetFormValues, budgetId?: string, existingBudgetNumber?: string): BudgetEntry {
+  const createdAt = values.createdAt || todayKey();
+  const validityDays = values.validityDays === "30" ? 30 : 15;
+  const rawItems = values.items
+    .map((item) =>
+      createBudgetItem(
+        item.id || createId("budget-item"),
+        Math.max(toAmount(item.quantity), 0),
+        item.detail.trim(),
+        Math.max(toAmount(item.unitPrice), 0)
+      )
+    )
+    .filter((item) => item.detail.trim());
+  const entryId = budgetId ?? createId("budget");
+
+  return syncBudgetEntry({
+    id: entryId,
+    budgetNumber: existingBudgetNumber ?? createBudgetNumber(createdAt, entryId),
+    createdAt,
+    validityDays,
+    validUntil: values.validUntil,
+    note: values.note.trim(),
+    items: rawItems,
+    totalAmount: 0
+  });
 }
 
 function defaultPatientValues(patient?: Patient) {
@@ -617,6 +663,15 @@ export default function App() {
     setModalState({ type: "record-create", kind: "treatment" });
   };
 
+  const openBudgetCreate = () => {
+    if (clinicPatients.length === 0) {
+      openPatientCreate();
+      return;
+    }
+
+    setModalState({ type: "record-create", kind: "budget" });
+  };
+
   const openCreateRecord = (kind: RecordKind, patientId: string) => {
     setModalState({ type: "record-create", kind, patientId });
   };
@@ -631,6 +686,10 @@ export default function App() {
 
   const askDeletePatient = (patientId: string) => {
     setDeleteIntent({ target: "patient", patientId });
+  };
+
+  const openBudgetPreview = (patientId: string, budgetId: string) => {
+    setModalState({ type: "budget-preview", patientId, budgetId });
   };
 
   const closeModals = () => {
@@ -674,6 +733,7 @@ export default function App() {
       evolutions: existingPatient?.evolutions ?? [],
       followUps: existingPatient?.followUps ?? [],
       notes: existingPatient?.notes ?? [],
+      budgets: existingPatient?.budgets ?? [],
       finances: existingPatient?.finances ?? [],
       patientExpenses: existingPatient?.patientExpenses ?? []
     };
@@ -738,6 +798,7 @@ export default function App() {
           evolutions: [],
           followUps: sortFollowUps(followUps),
           notes: [],
+          budgets: [],
           finances: sortFinancesByActivity(finances),
           patientExpenses: sortByDateDesc(patientExpenses)
         })
@@ -777,6 +838,41 @@ export default function App() {
 
     setSelectedPatientId(targetPatientId);
     setActiveView("patients");
+    closeModals();
+  };
+
+  const submitBudgetForm = (values: BudgetFormValues, intent: "save" | "print", budgetId?: string) => {
+    const targetPatientId = values.patientTarget;
+    if (!targetPatientId) return;
+
+    const currentPatient = clinicPatients.find((patient) => patient.id === targetPatientId) ?? null;
+    if (!currentPatient) return;
+
+    const existingBudget = budgetId ? currentPatient.budgets.find((item) => item.id === budgetId) ?? null : null;
+    const nextBudget = buildBudgetEntryFromForm(values, budgetId, existingBudget?.budgetNumber);
+    if (nextBudget.items.length === 0) return;
+
+    applyPatientMutation(
+      targetPatientId,
+      (patient) => ({
+        ...patient,
+        budgets: sortBudgetsByDateDesc(
+          budgetId
+            ? patient.budgets.map((item) => (item.id === budgetId ? nextBudget : item))
+            : [nextBudget, ...patient.budgets]
+        )
+      }),
+      budgetId ? "Presupuesto actualizado en Firebase." : "Presupuesto guardado en Firebase."
+    );
+
+    setSelectedPatientId(targetPatientId);
+    setActiveView("patients");
+
+    if (intent === "print") {
+      setModalState({ type: "budget-preview", patientId: targetPatientId, budgetId: nextBudget.id });
+      return;
+    }
+
     closeModals();
   };
 
@@ -1122,6 +1218,17 @@ export default function App() {
       );
     }
 
+    if (target === "budget") {
+      applyPatientMutation(
+        patientId,
+        (patient) => ({
+          ...patient,
+          budgets: patient.budgets.filter((item) => item.id !== itemId)
+        }),
+        "Presupuesto eliminado de Firebase."
+      );
+    }
+
     if (target === "finance") {
       applyPatientMutation(
         patientId,
@@ -1425,6 +1532,39 @@ export default function App() {
     };
   };
 
+  const getBudgetInitialValues = (patientId?: string, budgetId?: string): BudgetFormValues => {
+    const patient = patientId ? clinicPatients.find((entry) => entry.id === patientId) ?? null : null;
+    const budget = budgetId ? patient?.budgets.find((entry) => entry.id === budgetId) ?? null : null;
+
+    if (budget) {
+      return {
+        patientTarget: patientId ?? "",
+        createdAt: budget.createdAt,
+        validityDays: budget.validityDays === 30 ? "30" : "15",
+        validUntil: budget.validUntil,
+        note: budget.note,
+        items:
+          budget.items.length > 0
+            ? budget.items.map((item) => ({
+                id: item.id,
+                quantity: String(item.quantity),
+                detail: item.detail,
+                unitPrice: String(item.unitPrice)
+              }))
+            : [createBudgetLineFormItem()]
+      };
+    }
+
+    return {
+      patientTarget: patientId ?? "",
+      createdAt: todayKey(),
+      validityDays: "15",
+      validUntil: "",
+      note: "",
+      items: [createBudgetLineFormItem()]
+    };
+  };
+
   const transformFollowUpValues = (
     nextValues: Record<string, string>,
     changedField: string
@@ -1444,6 +1584,29 @@ export default function App() {
 
   const modalConfig = useMemo(() => {
     if (!modalState) return null;
+
+    if (modalState.type === "budget-preview") {
+      const patient = clinicPatients.find((entry) => entry.id === modalState.patientId) ?? null;
+      const budget = patient?.budgets.find((entry) => entry.id === modalState.budgetId) ?? null;
+
+      if (!patient || !budget) return null;
+
+      return (
+        <BudgetPrintPreview
+          patient={patient}
+          budget={budget}
+          onClose={closeModals}
+          onEdit={() =>
+            setModalState({
+              type: "record-edit",
+              kind: "budget",
+              patientId: patient.id,
+              itemId: budget.id
+            })
+          }
+        />
+      );
+    }
 
     if (modalState.type === "patient-create") {
       return (
@@ -1482,6 +1645,7 @@ export default function App() {
       treatment: "Atencion rapida",
       evolution: "Nueva evolucion",
       followup: "Nuevo seguimiento",
+      budget: "Nuevo presupuesto",
       finance: "Nueva deuda o cargo",
       payment: "Registrar pago",
       expense: "Nuevo costo del paciente",
@@ -1491,6 +1655,7 @@ export default function App() {
       treatment: "Editar atencion completa",
       evolution: "Editar evolucion",
       followup: "Editar seguimiento",
+      budget: "Editar presupuesto",
       finance: "Editar deuda o cargo",
       payment: "Editar pago",
       expense: "Editar costo del paciente",
@@ -1537,6 +1702,35 @@ export default function App() {
           lockPatient={Boolean(modalState.patientId)}
           onClose={closeModals}
           onSubmit={(values) => submitAttentionForm(values, modalState.patientId)}
+        />
+      );
+    }
+
+    if (modalState.kind === "budget") {
+      return (
+        <BudgetModal
+          title={modalState.type === "record-create" ? "Nuevo presupuesto" : "Editar presupuesto"}
+          subtitle={
+            modalState.patientId
+              ? `Paciente: ${patientLabel}`
+              : "Elige paciente, carga filas y deja el documento listo para imprimir."
+          }
+          submitLabel="Guardar presupuesto"
+          patientOptions={patientOptions}
+          initialValues={getBudgetInitialValues(
+            modalState.patientId,
+            modalState.type === "record-edit" ? modalState.itemId : undefined
+          )}
+          lockPatient={Boolean(modalState.patientId)}
+          lockedPatientLabel={patientLabel}
+          onClose={closeModals}
+          onSubmit={(values, intent) =>
+            submitBudgetForm(
+              values,
+              intent,
+              modalState.type === "record-edit" ? modalState.itemId : undefined
+            )
+          }
         />
       );
     }
@@ -1602,6 +1796,7 @@ export default function App() {
       treatment: "esta atencion completa",
       evolution: "esta evolucion",
       followup: "este seguimiento",
+      budget: "este presupuesto",
       finance: "esta deuda o cargo",
       payment: "este pago",
       expense: "este costo del paciente",
@@ -1711,6 +1906,7 @@ export default function App() {
                   onCreateRecord={openCreateRecord}
                   onEditRecord={openEditRecord}
                   onDeleteRecord={askDeleteRecord}
+                  onPreviewBudget={openBudgetPreview}
                 />
               </aside>
             </div>
@@ -1829,6 +2025,9 @@ export default function App() {
           </button>
           <button type="button" className="outline-button" onClick={openPatientCreate}>
             Nuevo paciente
+          </button>
+          <button type="button" className="outline-button" onClick={openBudgetCreate}>
+            Presupuesto
           </button>
           <button type="button" className="primary-button" onClick={openTreatmentCreate}>
             Atencion rapida
