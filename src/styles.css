@@ -1710,7 +1710,7 @@ a {
   margin: 0;
   color: #163556;
   font-family: "Sora", sans-serif;
-  font-size: clamp(1.75rem, 2.7vw, 2.2rem);
+  font-size: clamp(1.2rem, 1.8vw, 1.5rem);
   font-weight: 800;
 }
 
