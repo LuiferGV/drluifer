@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import logoFirma from "../../logonegrofirma.png";
-import { getBudgetStatusClassName, getBudgetStatusLabel } from "../lib/budgets";
 import { formatDate, formatGs } from "../lib/date";
 import type { BudgetEntry, Patient } from "../types/clinic";
 
@@ -42,33 +41,7 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
-function buildStatusStyles(statusLabel: string) {
-  if (statusLabel === "Aprobado") {
-    return {
-      background: "rgba(84, 224, 196, 0.16)",
-      border: "rgba(46, 158, 128, 0.22)",
-      color: "#1f7c68"
-    };
-  }
-
-  if (statusLabel === "Rechazado") {
-    return {
-      background: "rgba(255, 142, 127, 0.14)",
-      border: "rgba(224, 107, 91, 0.24)",
-      color: "#b64e42"
-    };
-  }
-
-  return {
-    background: "rgba(250, 202, 92, 0.14)",
-    border: "rgba(224, 177, 62, 0.22)",
-    color: "#8f6421"
-  };
-}
-
 function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnType<typeof buildPrintRows>) {
-  const statusLabel = getBudgetStatusLabel(budget);
-  const statusStyles = buildStatusStyles(statusLabel);
   const note = budget.note || "Presupuesto sujeto a reevaluacion clinica segun evolucion del caso.";
   const tableRows = rows
     .map(
@@ -116,9 +89,7 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
         width: 100%;
         min-height: 0;
         padding: 10mm 10mm 12mm;
-        background:
-          radial-gradient(circle at 100% 0%, rgba(69, 167, 255, 0.08), transparent 28%),
-          linear-gradient(180deg, #ffffff, #f7fbff);
+        background: #ffffff;
       }
 
       .header {
@@ -146,7 +117,7 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
 
       .eyebrow {
         margin: 0;
-        color: #4d6d86;
+        color: #525252;
         font-size: 3.2mm;
         font-weight: 800;
         text-transform: uppercase;
@@ -156,31 +127,16 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
       .title-row {
         display: flex;
         align-items: center;
-        gap: 3mm;
-        flex-wrap: wrap;
+        gap: 0;
       }
 
       h1 {
         margin: 0;
-        color: #163556;
+        color: #111111;
         font-size: 6.3mm;
         font-weight: 800;
         line-height: 1.1;
-      }
-
-      .status {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 9mm;
-        padding: 0 4mm;
-        border-radius: 999px;
-        border: 0.35mm solid ${statusStyles.border};
-        background: ${statusStyles.background};
-        color: ${statusStyles.color};
-        font-size: 3.6mm;
-        font-weight: 700;
-        white-space: nowrap;
+        letter-spacing: -0.02em;
       }
 
       .clinic {
@@ -188,14 +144,14 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
         justify-items: end;
         gap: 2mm;
         text-align: right;
-        color: #355674;
+        color: #454545;
         font-size: 3.8mm;
         line-height: 1.35;
       }
 
       .clinic > strong,
       .clinic-line strong {
-        color: #163556;
+        color: #111111;
       }
 
       .clinic > strong {
@@ -224,19 +180,19 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
         gap: 1.5mm;
         padding: 4mm;
         border-radius: 4mm;
-        border: 0.35mm solid rgba(22, 53, 86, 0.12);
-        background: rgba(245, 250, 255, 0.92);
+        border: 0.35mm solid #d8d8d8;
+        background: #f4f4f4;
       }
 
       .meta-card span,
       .meta-card small,
       .notes span,
       .totals span {
-        color: #5d7690;
+        color: #5b5b5b;
       }
 
       .meta-card strong {
-        color: #163556;
+        color: #111111;
         font-size: 4.2mm;
       }
 
@@ -245,19 +201,19 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
         margin-top: 6mm;
         border-radius: 4mm;
         overflow: hidden;
-        border: 0.35mm solid rgba(22, 53, 86, 0.18);
+        border: 0.35mm solid #d2d2d2;
       }
 
       .budget-table-head,
       .budget-row {
         display: grid;
-        grid-template-columns: 16mm minmax(0, 1fr) 30mm 30mm;
+        grid-template-columns: 22mm minmax(0, 1fr) 32mm 32mm;
       }
 
       .budget-table-head {
-        background: linear-gradient(135deg, #163556, #23517d);
+        background: #121212;
         color: #ffffff;
-        font-size: 3.1mm;
+        font-size: 2.75mm;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -267,7 +223,12 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
       .budget-row span,
       .budget-row strong {
         padding: 3.4mm 4mm;
-        border-right: 0.3mm solid rgba(22, 53, 86, 0.12);
+        border-right: 0.3mm solid #d8d8d8;
+      }
+
+      .budget-table-head span {
+        overflow: hidden;
+        line-height: 1.2;
       }
 
       .budget-table-head span:last-child,
@@ -281,13 +242,13 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
 
       .budget-row {
         min-height: 12mm;
-        border-top: 0.3mm solid rgba(22, 53, 86, 0.12);
-        background: rgba(255, 255, 255, 0.88);
+        border-top: 0.3mm solid #d8d8d8;
+        background: #ffffff;
         font-size: 4mm;
       }
 
       .budget-row strong {
-        color: #163556;
+        color: #111111;
       }
 
       .footer {
@@ -307,7 +268,7 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
 
       .notes p {
         margin: 0;
-        color: #294764;
+        color: #222222;
         line-height: 1.55;
         font-size: 4mm;
       }
@@ -320,7 +281,7 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
       }
 
       .totals strong {
-        color: #163556;
+        color: #111111;
         white-space: nowrap;
         font-size: 4.4mm;
       }
@@ -330,7 +291,7 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
         grid-template-columns: 1fr;
         gap: 2mm;
         padding-top: 3mm;
-        border-top: 0.3mm solid rgba(22, 53, 86, 0.14);
+        border-top: 0.3mm solid #d2d2d2;
       }
 
       .totals .grand strong {
@@ -349,7 +310,6 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
           <p class="eyebrow">Odontologia integral</p>
           <div class="title-row">
             <h1>Presupuesto</h1>
-            <span class="status">${escapeHtml(statusLabel)}</span>
           </div>
         </div>
 
@@ -383,7 +343,7 @@ function buildPrintDocument(patient: Patient, budget: BudgetEntry, rows: ReturnT
 
       <section class="budget-table">
         <div class="budget-table-head">
-          <span>Cantidad</span>
+          <span>Cant.</span>
           <span>Detalle del tratamiento</span>
           <span>Precio unitario</span>
           <span>Total</span>
@@ -496,9 +456,6 @@ export function BudgetPrintPreview({
                 <p className="budget-sheet__eyebrow">Odontologia integral</p>
                 <div className="budget-sheet__title-row">
                   <h1>Presupuesto</h1>
-                  <span className={`budget-sheet__status ${getBudgetStatusClassName(budget)}`}>
-                    {getBudgetStatusLabel(budget)}
-                  </span>
                 </div>
               </div>
             </div>
@@ -539,7 +496,7 @@ export function BudgetPrintPreview({
 
           <section className="budget-sheet__table">
             <div className="budget-sheet__table-head">
-              <span>Cantidad</span>
+              <span>Cant.</span>
               <span>Detalle del tratamiento</span>
               <span>Precio unitario</span>
               <span>Total</span>

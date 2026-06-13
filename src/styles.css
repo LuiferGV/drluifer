@@ -1653,10 +1653,8 @@ a {
   margin: 0 auto;
   padding: 22mm 18mm 18mm;
   border-radius: 20px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(69, 167, 255, 0.08), transparent 28%),
-    linear-gradient(180deg, #ffffff, #f7fbff);
-  color: #17324a;
+  background: #ffffff;
+  color: #222222;
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.18);
 }
 
@@ -1700,7 +1698,7 @@ a {
 
 .budget-sheet__eyebrow {
   margin: 0;
-  color: #4d6d86;
+  color: #525252;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -1709,7 +1707,7 @@ a {
 
 .budget-sheet h1 {
   margin: 0;
-  color: #163556;
+  color: #111111;
   font-family: "Sora", sans-serif;
   font-size: clamp(1.2rem, 1.8vw, 1.5rem);
   font-weight: 800;
@@ -1747,13 +1745,13 @@ a {
   align-content: start;
   gap: 8px;
   text-align: right;
-  color: #355674;
+  color: #4b4b4b;
   font-size: 0.92rem;
   line-height: 1.35;
 }
 
 .budget-sheet__clinic strong {
-  color: #163556;
+  color: #111111;
 }
 
 .budget-sheet__clinic > strong {
@@ -1787,17 +1785,17 @@ a {
   gap: 4px;
   padding: 14px;
   border-radius: 16px;
-  border: 1px solid rgba(22, 53, 86, 0.12);
-  background: rgba(245, 250, 255, 0.92);
+  border: 1px solid #d8d8d8;
+  background: #f4f4f4;
 }
 
 .budget-sheet__meta-card span,
 .budget-sheet__meta-card small {
-  color: #5d7690;
+  color: #5c5c5c;
 }
 
 .budget-sheet__meta-card strong {
-  color: #163556;
+  color: #111111;
 }
 
 .budget-sheet__table {
@@ -1806,19 +1804,19 @@ a {
   margin-top: 24px;
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid rgba(22, 53, 86, 0.18);
+  border: 1px solid #d2d2d2;
 }
 
 .budget-sheet__table-head,
 .budget-sheet__row {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1.7fr) 148px 148px;
+  grid-template-columns: 98px minmax(0, 1.7fr) 148px 148px;
 }
 
 .budget-sheet__table-head {
-  background: linear-gradient(135deg, #163556, #23517d);
+  background: #121212;
   color: #fff;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1828,7 +1826,11 @@ a {
 .budget-sheet__row span,
 .budget-sheet__row strong {
   padding: 12px 14px;
-  border-right: 1px solid rgba(22, 53, 86, 0.12);
+  border-right: 1px solid #d8d8d8;
+}
+
+.budget-sheet__table-head span {
+  line-height: 1.2;
 }
 
 .budget-sheet__table-head span:last-child,
@@ -1842,12 +1844,12 @@ a {
 
 .budget-sheet__row {
   min-height: 46px;
-  border-top: 1px solid rgba(22, 53, 86, 0.12);
-  background: rgba(255, 255, 255, 0.88);
+  border-top: 1px solid #d8d8d8;
+  background: #ffffff;
 }
 
 .budget-sheet__row.has-content strong {
-  color: #163556;
+  color: #111111;
 }
 
 .budget-sheet__footer {
@@ -1863,13 +1865,13 @@ a {
   gap: 10px;
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(22, 53, 86, 0.12);
-  background: rgba(245, 250, 255, 0.92);
+  border: 1px solid #d8d8d8;
+  background: #f4f4f4;
 }
 
 .budget-sheet__notes span,
 .budget-sheet__totals span {
-  color: #5d7690;
+  color: #5c5c5c;
   font-size: 0.84rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -1878,7 +1880,7 @@ a {
 
 .budget-sheet__notes p {
   margin: 0;
-  color: #294764;
+  color: #222222;
   line-height: 1.65;
 }
 
@@ -1890,7 +1892,7 @@ a {
 }
 
 .budget-sheet__totals strong {
-  color: #163556;
+  color: #111111;
   white-space: nowrap;
 }
 
@@ -1900,7 +1902,7 @@ a {
   justify-items: start;
   gap: 8px;
   padding-top: 10px;
-  border-top: 1px solid rgba(22, 53, 86, 0.14);
+  border-top: 1px solid #d2d2d2;
 }
 
 .budget-sheet__totals .is-grand span {
