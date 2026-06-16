@@ -18,6 +18,7 @@ export interface AttentionLineItemForm {
   status: TreatmentStatus;
   totalAmount: string;
   paidAmount: string;
+  paidFromMarketing: boolean;
   costAmount: string;
   costCategory: string;
 }
@@ -68,6 +69,7 @@ function createLineItem(): AttentionLineItemForm {
     status: "Realizado",
     totalAmount: "",
     paidAmount: "",
+    paidFromMarketing: false,
     costAmount: "",
     costCategory: "Laboratorio"
   };
@@ -122,15 +124,17 @@ export function AttentionModal({
         (accumulator, item) => {
           const billed = Number(item.totalAmount || 0);
           const paid = Number(item.paidAmount || 0);
+          const marketingPaid = item.paidFromMarketing ? paid : 0;
           const costs = Number(item.costAmount || 0);
 
           return {
             billed: accumulator.billed + billed,
             paid: accumulator.paid + paid,
+            marketingPaid: accumulator.marketingPaid + marketingPaid,
             costs: accumulator.costs + costs
           };
         },
-        { billed: 0, paid: 0, costs: 0 }
+        { billed: 0, paid: 0, marketingPaid: 0, costs: 0 }
       ),
     [values.items]
   );
@@ -538,6 +542,22 @@ export function AttentionModal({
                       />
                     </label>
 
+                    <label className="modal-field modal-field--checkbox attention-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={item.paidFromMarketing}
+                        onChange={(event) =>
+                          setValues((current) => ({
+                            ...current,
+                            items: current.items.map((entry) =>
+                              entry.id === item.id ? { ...entry, paidFromMarketing: event.target.checked } : entry
+                            )
+                          }))
+                        }
+                      />
+                      <span>Este cobro vino de marketing</span>
+                    </label>
+
                     <label className="modal-field">
                       <span>Costo del caso</span>
                       <input
@@ -700,6 +720,10 @@ export function AttentionModal({
                 <article className="mini-metric">
                   <span>Cobrado hoy</span>
                   <strong>Gs. {totals.paid.toLocaleString("es-PY")}</strong>
+                </article>
+                <article className="mini-metric">
+                  <span>Cobrado por marketing</span>
+                  <strong>Gs. {totals.marketingPaid.toLocaleString("es-PY")}</strong>
                 </article>
                 <article className="mini-metric">
                   <span>Costos</span>

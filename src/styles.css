@@ -619,6 +619,12 @@ a {
     linear-gradient(180deg, rgba(15, 27, 29, 0.98), rgba(10, 18, 21, 0.98));
 }
 
+.action-tile--marketing {
+  background:
+    radial-gradient(circle at top right, rgba(250, 202, 92, 0.18), transparent 28%),
+    linear-gradient(180deg, rgba(31, 27, 18, 0.98), rgba(17, 14, 10, 0.98));
+}
+
 .action-tile__meta {
   color: var(--text-main);
 }
@@ -1286,6 +1292,19 @@ a {
   margin-top: 18px;
 }
 
+.marketing-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.marketing-reading-block {
+  margin-top: 18px;
+}
+
+.attention-checkbox {
+  align-self: end;
+}
+
 .modal-shell {
   position: fixed;
   inset: 0;
@@ -1374,6 +1393,17 @@ a {
   color: var(--text-main);
 }
 
+.modal-field--checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  background: rgba(8, 17, 25, 0.72);
+}
+
 .modal-field__actions {
   display: flex;
   justify-content: flex-start;
@@ -1390,6 +1420,10 @@ a {
 
 .modal-field span {
   font-weight: 700;
+}
+
+.modal-field--checkbox span {
+  font-weight: 800;
 }
 
 .modal-field input,
@@ -1429,6 +1463,20 @@ a {
 .modal-field input:focus,
 .modal-field textarea:focus,
 .modal-field select:focus {
+  border-color: rgba(69, 167, 255, 0.52);
+  box-shadow: 0 0 0 4px rgba(69, 167, 255, 0.1);
+}
+
+.modal-field--checkbox input {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: #54e0c4;
+}
+
+.modal-field--checkbox:has(input:focus-visible) {
   border-color: rgba(69, 167, 255, 0.52);
   box-shadow: 0 0 0 4px rgba(69, 167, 255, 0.1);
 }

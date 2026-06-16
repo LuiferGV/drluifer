@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-type FieldType = "text" | "tel" | "date" | "textarea" | "select" | "number" | "search-select";
+type FieldType = "text" | "tel" | "date" | "textarea" | "select" | "number" | "search-select" | "checkbox";
 type FieldOption = string | { label: string; value: string };
 
 export interface ModalField {
@@ -213,6 +213,19 @@ export function EntityModal({
                         </div>
                       ) : null}
                     </div>
+                  </label>
+                );
+              }
+
+              if (field.type === "checkbox") {
+                return (
+                  <label key={field.name} className="modal-field modal-field--checkbox">
+                    <input
+                      type="checkbox"
+                      checked={value === "true"}
+                      onChange={(event) => handleChange(field.name, event.target.checked ? "true" : "false")}
+                    />
+                    <span>{field.label}</span>
                   </label>
                 );
               }

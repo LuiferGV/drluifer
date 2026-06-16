@@ -105,7 +105,14 @@ function normalizeExpense(
     scope,
     patientId: rawExpense.patientId ? String(rawExpense.patientId) : undefined,
     patientName: rawExpense.patientName ? String(rawExpense.patientName) : undefined,
-    linkedTreatmentId: rawExpense.linkedTreatmentId ? String(rawExpense.linkedTreatmentId) : undefined
+    linkedTreatmentId: rawExpense.linkedTreatmentId ? String(rawExpense.linkedTreatmentId) : undefined,
+    paymentMethod: rawExpense.paymentMethod ? String(rawExpense.paymentMethod) : undefined,
+    vendor: rawExpense.vendor ? String(rawExpense.vendor) : undefined,
+    marketingType: rawExpense.marketingType ? String(rawExpense.marketingType) : undefined,
+    isMarketing:
+      typeof rawExpense.isMarketing === "boolean"
+        ? rawExpense.isMarketing
+        : String(rawExpense.category || "").trim().toLowerCase() === "marketing"
   };
 }
 
@@ -118,7 +125,8 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
       date: String(payment.date || entry.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
       amount: Number(payment.amount || 0),
       method: String(payment.method || "Otro"),
-      note: String(payment.note || "")
+      note: String(payment.note || ""),
+      fromMarketing: Boolean(payment.fromMarketing)
     }));
 
     return syncFinanceEntry({
@@ -268,4 +276,15 @@ export async function savePatient(patient: Patient) {
 export async function deletePatient(patientId: string) {
   const database = ensureDatabase();
   await remove(ref(database, `odontologia/pacientes/${patientId}`));
+}
+
+export async function saveExpense(expense: Expense) {
+  const database = ensureDatabase();
+  const { id, ...expensePayload } = expense;
+  await set(ref(database, `odontologia/egresos/${id}`), expensePayload);
+}
+
+export async function deleteExpense(expenseId: string) {
+  const database = ensureDatabase();
+  await remove(ref(database, `odontologia/egresos/${expenseId}`));
 }

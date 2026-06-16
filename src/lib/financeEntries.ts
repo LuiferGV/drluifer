@@ -21,20 +21,23 @@ export function createPaymentEntry({
   date,
   amount,
   method,
-  note
+  note,
+  fromMarketing
 }: {
   id: string;
   date: string;
   amount: number;
   method?: string;
   note?: string;
+  fromMarketing?: boolean;
 }): PaymentEntry {
   return {
     id,
     date,
     amount: Math.max(amount || 0, 0),
     method: method?.trim() || "Otro",
-    note: note?.trim() || ""
+    note: note?.trim() || "",
+    fromMarketing: Boolean(fromMarketing)
   };
 }
 
@@ -59,7 +62,8 @@ export function syncFinanceEntry(entry: FinanceEntry): FinanceEntry {
     ...payment,
     amount: Number(payment.amount || 0),
     method: payment.method?.trim() || "Otro",
-    note: payment.note || ""
+    note: payment.note || "",
+    fromMarketing: Boolean(payment.fromMarketing)
   }));
 
   const totalAmount = Math.max(Number(entry.totalAmount || 0), 0);

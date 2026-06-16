@@ -27,6 +27,7 @@ export type PatientTab =
 
 export type ExpenseScope = "general" | "patient";
 export type PaymentMethod = "Efectivo" | "Transferencia" | "Tarjeta" | "QR" | "Otro" | "Importado";
+export type MarketingExpenseType = "Agencia" | "Publicidad" | "Contenido" | "Diseno" | "Otro";
 
 export interface PaymentEntry {
   id: string;
@@ -34,6 +35,7 @@ export interface PaymentEntry {
   amount: number;
   method: PaymentMethod | string;
   note: string;
+  fromMarketing?: boolean;
 }
 
 export interface Treatment {
@@ -124,6 +126,10 @@ export interface Expense {
   patientId?: string;
   patientName?: string;
   linkedTreatmentId?: string;
+  paymentMethod?: PaymentMethod | string;
+  vendor?: string;
+  marketingType?: MarketingExpenseType | string;
+  isMarketing?: boolean;
 }
 
 export interface Patient {

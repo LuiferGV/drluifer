@@ -89,7 +89,8 @@ function finance(
   paidAmount: number,
   description: string,
   practitioner?: string,
-  linkedTreatmentId?: string
+  linkedTreatmentId?: string,
+  fromMarketing = false
 ) {
   return createFinanceEntry({
     id,
@@ -107,7 +108,8 @@ function finance(
               date: addDays(today, offset),
               amount: paidAmount,
               method: "Importado",
-              note: description
+              note: description,
+              fromMarketing
             })
           ]
         : []
@@ -336,7 +338,7 @@ export const mockPatients: Patient[] = [
     budgets: [],
     finances: [
       finance("m-paula-1", -20, "Restauracion estetica", 650000, 650000, "Cobro completo por transferencia", "Dr. Luis F. Gonzalez", "t-paula-1"),
-      finance("m-paula-2", -1, "Consulta de control", 120000, 120000, "Pago con tarjeta", "Dr. Luis F. Gonzalez", "t-paula-2")
+      finance("m-paula-2", -1, "Consulta de control", 120000, 120000, "Pago con tarjeta", "Dr. Luis F. Gonzalez", "t-paula-2", true)
     ],
     patientExpenses: []
   },
@@ -428,7 +430,11 @@ export const mockExpenses: Expense[] = [
     concept: "Publicidad Instagram",
     category: "Marketing",
     amount: 180000,
-    description: "Campana local del mes"
+    description: "Campana local del mes",
+    paymentMethod: "Tarjeta",
+    vendor: "Meta Ads",
+    marketingType: "Publicidad",
+    isMarketing: true
   }
 ];
 

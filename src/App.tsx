@@ -7,6 +7,7 @@ import { BudgetModal, type BudgetFormValues } from "./components/BudgetModal";
 import { BudgetPrintPreview } from "./components/BudgetPrintPreview";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { EntityModal, type ModalField } from "./components/EntityModal";
+import { MarketingDashboard } from "./components/MarketingDashboard";
 import { MetricCard } from "./components/MetricCard";
 import { PatientRoster } from "./components/PatientRoster";
 import { PatientWorkspace, type RecordKind } from "./components/PatientWorkspace";
@@ -14,8 +15,10 @@ import { PeriodFinancials } from "./components/PeriodFinancials";
 import { useClinicData } from "./hooks/useClinicData";
 import { useFirebaseSession } from "./hooks/useFirebaseSession";
 import {
+  deleteExpense as deleteExpenseRecord,
   deletePatient as deletePatientRecord,
   hasRealtimeDatabaseConfig,
+  saveExpense as saveGeneralExpense,
   savePatient
 } from "./lib/firebase";
 import {
@@ -45,6 +48,7 @@ import {
   getMonthKey,
   normalizeMonthRange
 } from "./lib/date";
+import { getMarketingDashboardData } from "./lib/marketing";
 import {
   getPractitionerKey,
   getUniquePractitionerNames,
@@ -69,7 +73,7 @@ import type {
   Treatment
 } from "./types/clinic";
 
-type MainView = "home" | "patients" | "alerts" | "finance";
+type MainView = "home" | "patients" | "alerts" | "finance" | "marketing";
 type PatientLetterFilter = "all" | string;
 type DoctorFilter = "all" | string;
 type SyncState = "idle" | "saving" | "saved" | "error";
@@ -77,6 +81,8 @@ type SyncState = "idle" | "saving" | "saved" | "error";
 type ModalState =
   | { type: "patient-create" }
   | { type: "patient-edit"; patientId: string }
+  | { type: "marketing-expense-create" }
+  | { type: "marketing-expense-edit"; expenseId: string }
   | { type: "record-create"; kind: RecordKind; patientId?: string; prefillFromId?: string }
   | { type: "record-edit"; kind: RecordKind; patientId: string; itemId: string }
   | { type: "budget-preview"; patientId: string; budgetId: string }
@@ -84,6 +90,7 @@ type ModalState =
 
 type DeleteIntent =
   | { target: "patient"; patientId: string }
+  | { target: "marketing-expense"; expenseId: string }
   | { target: RecordKind; patientId: string; itemId: string }
   | null;
 
@@ -221,7 +228,8 @@ function buildTreatmentFinanceEntry(
             date: values.date || todayKey(),
             amount: createPaymentDelta,
             method: "Efectivo",
-            note: "Pago registrado junto con la atencion."
+            note: "Pago registrado junto con la atencion.",
+            fromMarketing: values.paidFromMarketing === "true"
           }),
           ...currentPayments
         ]
@@ -281,7 +289,8 @@ function buildAttentionPayload(values: AttentionFormValues) {
                 date: referenceDate,
                 amount: paidTodayAmount,
                 method: "Efectivo",
-                note: "Pago registrado junto con la atencion."
+                note: "Pago registrado junto con la atencion.",
+                fromMarketing: item.paidFromMarketing
               })
             ]
           : []
@@ -421,12 +430,47 @@ function patientFields(): ModalField[] {
   ];
 }
 
+function marketingExpenseFields(): ModalField[] {
+  return [
+    { name: "date", label: "Fecha", type: "date", required: true },
+    { name: "concept", label: "Concepto", type: "text", required: true, placeholder: "Ej.: Campana Instagram junio" },
+    { name: "vendor", label: "Proveedor", type: "text", placeholder: "Ej.: Agencia Atlas, Meta Ads" },
+    {
+      name: "marketingType",
+      label: "Tipo de gasto",
+      type: "select",
+      options: ["Agencia", "Publicidad", "Contenido", "Diseno", "Otro"]
+    },
+    {
+      name: "paymentMethod",
+      label: "Forma de pago",
+      type: "select",
+      options: ["Transferencia", "Tarjeta", "Efectivo", "QR", "Otro"]
+    },
+    { name: "amount", label: "Monto", type: "number", min: 0, step: "1", required: true },
+    { name: "description", label: "Detalle", type: "textarea", rows: 4, placeholder: "Notas del gasto o de la campana" }
+  ];
+}
+
+function defaultMarketingExpenseValues(expense?: Expense) {
+  return {
+    date: expense?.date ?? todayKey(),
+    concept: expense?.concept ?? "",
+    vendor: expense?.vendor ?? "",
+    marketingType: expense?.marketingType ?? "Publicidad",
+    paymentMethod: expense?.paymentMethod ?? "Transferencia",
+    amount: expense ? String(expense.amount) : "",
+    description: expense?.description ?? ""
+  };
+}
+
 export default function App() {
   const { sessionState, userEmail, authError, isSubmitting, login, logout } = useFirebaseSession();
-  const { patients: sourcePatients, expenses, dataSource, firebaseState } = useClinicData(
+  const { patients: sourcePatients, expenses: sourceExpenses, dataSource, firebaseState } = useClinicData(
     sessionState === "authenticated"
   );
   const [clinicPatients, setClinicPatients] = useState<Patient[]>(() => preparePatients(sourcePatients));
+  const [clinicExpenses, setClinicExpenses] = useState<Expense[]>(() => sourceExpenses);
   const [currentCalendarMonth, setCurrentCalendarMonth] = useState(() => currentMonthKey());
   const [periodStartMonth, setPeriodStartMonth] = useState(() => currentMonthKey());
   const [periodEndMonth, setPeriodEndMonth] = useState(() => currentMonthKey());
@@ -450,6 +494,10 @@ export default function App() {
   useEffect(() => {
     setClinicPatients(preparePatients(sourcePatients));
   }, [sourcePatients]);
+
+  useEffect(() => {
+    setClinicExpenses(sourceExpenses);
+  }, [sourceExpenses]);
 
   useEffect(() => {
     if (sessionState === "authenticated") {
@@ -548,10 +596,11 @@ export default function App() {
   const periodLabel = useMemo(() => formatMonthRangeLabel(periodRange), [periodRange]);
   const selectedPatient = filteredPatients.find((patient) => patient.id === selectedPatientId) ?? null;
   const alerts = getClinicAlerts(clinicPatients);
-  const metrics = getDashboardMetrics(clinicPatients, expenses, periodRange);
+  const metrics = getDashboardMetrics(clinicPatients, clinicExpenses, periodRange);
   const pendingCollections = getPendingCollections(clinicPatients, periodRange);
   const collectedEntries = getCollectedIncomeEntries(clinicPatients, periodRange);
-  const periodExpenses = getPeriodExpenses(clinicPatients, expenses, periodRange);
+  const periodExpenses = getPeriodExpenses(clinicPatients, clinicExpenses, periodRange);
+  const marketingData = getMarketingDashboardData(clinicPatients, clinicExpenses, periodRange);
   const activeAlertsCount = alerts.filter((alert) => alert.bucket !== "future").length;
   const urgentAlertsCount = alerts.filter((alert) => alert.bucket === "vencido" || alert.bucket === "today").length;
 
@@ -642,6 +691,22 @@ export default function App() {
     void persistFirebaseChange(() => savePatient(nextPatient), successMessage, () => setClinicPatients(previousPatients));
   };
 
+  const applyExpenseMutation = (
+    nextExpense: Expense,
+    successMessage: string,
+    expenseId?: string
+  ) => {
+    const previousExpenses = clinicExpenses;
+    const nextExpenses = sortByDateDesc(
+      expenseId
+        ? previousExpenses.map((expense) => (expense.id === expenseId ? nextExpense : expense))
+        : [nextExpense, ...previousExpenses]
+    );
+
+    setClinicExpenses(nextExpenses);
+    void persistFirebaseChange(() => saveGeneralExpense(nextExpense), successMessage, () => setClinicExpenses(previousExpenses));
+  };
+
   const handleOpenPatient = (patientId: string) => {
     startTransition(() => {
       setSearchTerm("");
@@ -675,6 +740,18 @@ export default function App() {
 
   const openBudgetDuplicate = (patientId: string, budgetId: string) => {
     setModalState({ type: "record-create", kind: "budget", patientId, prefillFromId: budgetId });
+  };
+
+  const openMarketingExpenseCreate = () => {
+    setModalState({ type: "marketing-expense-create" });
+  };
+
+  const openMarketingExpenseEdit = (expenseId: string) => {
+    setModalState({ type: "marketing-expense-edit", expenseId });
+  };
+
+  const askDeleteMarketingExpense = (expenseId: string) => {
+    setDeleteIntent({ target: "marketing-expense", expenseId });
   };
 
   const openCreateRecord = (kind: RecordKind, patientId: string) => {
@@ -765,6 +842,30 @@ export default function App() {
         setActiveView(previousView);
       }
     );
+  };
+
+  const submitMarketingExpenseForm = (values: Record<string, string>, expenseId?: string) => {
+    const nextExpense: Expense = {
+      id: expenseId ?? createId("marketing-expense"),
+      date: values.date || todayKey(),
+      concept: values.concept.trim(),
+      category: "Marketing",
+      amount: toAmount(values.amount),
+      description: values.description.trim(),
+      scope: "general",
+      paymentMethod: values.paymentMethod.trim() || "Transferencia",
+      vendor: values.vendor.trim(),
+      marketingType: values.marketingType.trim() || "Publicidad",
+      isMarketing: true
+    };
+
+    applyExpenseMutation(
+      nextExpense,
+      expenseId ? "Gasto de marketing actualizado en Firebase." : "Gasto de marketing guardado en Firebase.",
+      expenseId
+    );
+    setActiveView("marketing");
+    closeModals();
   };
 
   const submitAttentionForm = (values: AttentionFormValues, modalPatientId?: string) => {
@@ -1022,14 +1123,15 @@ export default function App() {
             ? existingFinance.payments
             : initialPaymentAmount > 0
               ? [
-                  createPaymentEntry({
-                    id: createId("payment"),
-                    date: values.date || todayKey(),
-                    amount: initialPaymentAmount,
-                    method: "Efectivo",
-                    note: "Pago inicial registrado junto con el cargo."
-                  })
-                ]
+                createPaymentEntry({
+                  id: createId("payment"),
+                  date: values.date || todayKey(),
+                  amount: initialPaymentAmount,
+                  method: "Efectivo",
+                  note: "Pago inicial registrado junto con el cargo.",
+                  fromMarketing: values.initialPaymentFromMarketing === "true"
+                })
+              ]
               : []
       });
 
@@ -1079,7 +1181,8 @@ export default function App() {
         date: values.date || todayKey(),
         amount,
         method,
-        note
+        note,
+        fromMarketing: values.fromMarketing === "true"
       });
 
       applyPatientMutation(
@@ -1175,6 +1278,21 @@ export default function App() {
           setClinicPatients(previousPatients);
           setSelectedPatientId(previousSelectedPatientId);
         }
+      );
+      return;
+    }
+
+    if (deleteIntent.target === "marketing-expense") {
+      const previousExpenses = clinicExpenses;
+      const nextExpenses = clinicExpenses.filter((expense) => expense.id !== deleteIntent.expenseId);
+
+      setClinicExpenses(nextExpenses);
+      closeModals();
+
+      void persistFirebaseChange(
+        () => deleteExpenseRecord(deleteIntent.expenseId),
+        "Gasto de marketing eliminado de Firebase.",
+        () => setClinicExpenses(previousExpenses)
       );
       return;
     }
@@ -1308,7 +1426,10 @@ export default function App() {
         { name: "totalAmount", label: "Monto del tratamiento", type: "number", min: 0, step: "1", required: true },
         ...(itemId
           ? []
-          : [{ name: "paidAmount", label: "Cuanto pago hoy", type: "number", min: 0, step: "1" } as ModalField]),
+          : [
+              { name: "paidAmount", label: "Cuanto pago hoy", type: "number", min: 0, step: "1" } as ModalField,
+              { name: "paidFromMarketing", label: "Este cobro vino de marketing", type: "checkbox" } as ModalField
+            ]),
         {
           name: "status",
           label: "Estado clinico",
@@ -1373,7 +1494,10 @@ export default function App() {
         { name: "totalAmount", label: "Monto total", type: "number", min: 0, step: "1", required: true },
         ...(itemId
           ? []
-          : [{ name: "initialPaymentAmount", label: "Pago en esta carga", type: "number", min: 0, step: "1" } as ModalField]),
+          : [
+              { name: "initialPaymentAmount", label: "Pago en esta carga", type: "number", min: 0, step: "1" } as ModalField,
+              { name: "initialPaymentFromMarketing", label: "Este pago vino de marketing", type: "checkbox" } as ModalField
+            ]),
         { name: "description", label: "Detalle", type: "textarea", rows: 4 }
       ];
     }
@@ -1404,6 +1528,7 @@ export default function App() {
           type: "select",
           options: ["Efectivo", "Transferencia", "Tarjeta", "QR", "Otro"]
         },
+        { name: "fromMarketing", label: "Este pago vino de marketing", type: "checkbox" },
         { name: "note", label: "Observacion", type: "textarea", rows: 4 }
       ];
     }
@@ -1444,6 +1569,7 @@ export default function App() {
         practitioner: item?.practitioner ?? "",
         totalAmount: item ? String(item.totalAmount) : "",
         paidAmount: "",
+        paidFromMarketing: "false",
         status: item?.status ?? "Realizado",
         note: item?.note ?? ""
       };
@@ -1503,6 +1629,7 @@ export default function App() {
         practitioner: item?.practitioner ?? "",
         totalAmount: item ? String(item.totalAmount) : "",
         initialPaymentAmount: "",
+        initialPaymentFromMarketing: "false",
         description: item?.description ?? ""
       };
     }
@@ -1514,6 +1641,7 @@ export default function App() {
         financeTarget: pendingFinance?.id ?? "",
         amount: "",
         method: "Efectivo",
+        fromMarketing: "false",
         note: ""
       };
     }
@@ -1652,6 +1780,37 @@ export default function App() {
       );
     }
 
+    if (modalState.type === "marketing-expense-create") {
+      return (
+        <EntityModal
+          title="Nuevo gasto de marketing"
+          subtitle="Carga un gasto independiente de agencia, anuncios, contenido o diseno."
+          submitLabel="Guardar gasto"
+          fields={marketingExpenseFields()}
+          initialValues={defaultMarketingExpenseValues()}
+          onClose={closeModals}
+          onSubmit={(values) => submitMarketingExpenseForm(values)}
+        />
+      );
+    }
+
+    if (modalState.type === "marketing-expense-edit") {
+      const expense = clinicExpenses.find((entry) => entry.id === modalState.expenseId) ?? null;
+      if (!expense) return null;
+
+      return (
+        <EntityModal
+          title="Editar gasto de marketing"
+          subtitle="Ajusta el gasto sin tocar la ficha de ningun paciente."
+          submitLabel="Guardar cambios"
+          fields={marketingExpenseFields()}
+          initialValues={defaultMarketingExpenseValues(expense)}
+          onClose={closeModals}
+          onSubmit={(values) => submitMarketingExpenseForm(values, expense.id)}
+        />
+      );
+    }
+
     if (modalState.type === "patient-edit") {
       const patient = clinicPatients.find((entry) => entry.id === modalState.patientId);
       if (!patient) return null;
@@ -1724,6 +1883,7 @@ export default function App() {
                 status: "Realizado",
                 totalAmount: "",
                 paidAmount: "",
+                paidFromMarketing: false,
                 costAmount: "",
                 costCategory: "Laboratorio"
               }
@@ -1818,7 +1978,7 @@ export default function App() {
         }
       />
     );
-  }, [availableDoctors, clinicPatients, modalState, patientOptions]);
+  }, [availableDoctors, clinicExpenses, clinicPatients, modalState, patientOptions]);
 
   const deleteConfig = useMemo(() => {
     if (!deleteIntent) return null;
@@ -1829,6 +1989,15 @@ export default function App() {
         title: "Eliminar ficha del paciente",
         message: `Esta accion quitara la ficha de ${patient?.fullName ?? "este paciente"} de la base actual.`,
         confirmLabel: "Eliminar ficha"
+      };
+    }
+
+    if (deleteIntent.target === "marketing-expense") {
+      const expense = clinicExpenses.find((entry) => entry.id === deleteIntent.expenseId) ?? null;
+      return {
+        title: "Eliminar gasto de marketing",
+        message: `Esta accion eliminara ${expense?.concept ?? "este gasto"} del panel de marketing.`,
+        confirmLabel: "Eliminar gasto"
       };
     }
 
@@ -1848,7 +2017,7 @@ export default function App() {
       message: `Esta accion eliminara ${labels[deleteIntent.target]}.`,
       confirmLabel: "Eliminar registro"
     };
-  }, [clinicPatients, deleteIntent]);
+  }, [clinicExpenses, clinicPatients, deleteIntent]);
 
   const authScreenError = manualAuthError ?? authError;
 
@@ -1986,6 +2155,28 @@ export default function App() {
       );
     }
 
+    if (activeView === "marketing") {
+      return (
+        <section className="single-column">
+          <MarketingDashboard
+            spendAmount={marketingData.spendAmount}
+            agencyAmount={marketingData.agencyAmount}
+            cardAmount={marketingData.cardAmount}
+            incomeAmount={marketingData.incomeAmount}
+            netAmount={marketingData.netAmount}
+            roas={marketingData.roas}
+            marketingPatientsCount={marketingData.marketingPatientsCount}
+            expenses={marketingData.expenses}
+            incomeEntries={marketingData.incomeEntries}
+            onOpenPatient={handleOpenPatient}
+            onCreateExpense={openMarketingExpenseCreate}
+            onEditExpense={openMarketingExpenseEdit}
+            onDeleteExpense={askDeleteMarketingExpense}
+          />
+        </section>
+      );
+    }
+
     return (
       <section className="home-layout">
         <section className="home-banner">
@@ -2043,6 +2234,17 @@ export default function App() {
             </div>
             <p className="action-tile__meta">Entrar al resumen financiero solo cuando quieras revisar cobros.</p>
           </button>
+
+          <button type="button" className="action-tile action-tile--marketing" onClick={() => setActiveView("marketing")}>
+            <div className="action-tile__header">
+              <div>
+                <p className="eyebrow">Marketing</p>
+                <h3>Gastos e ingresos</h3>
+              </div>
+              <span className="action-tile__count">{marketingData.marketingPatientsCount}</span>
+            </div>
+            <p className="action-tile__meta">Ver agencia, tarjeta e ingresos marcados como provenientes de marketing.</p>
+          </button>
         </section>
       </section>
     );
@@ -2097,6 +2299,13 @@ export default function App() {
             onClick={() => setActiveView("finance")}
           >
             Finanzas
+          </button>
+          <button
+            type="button"
+            className={`nav-toggle ${activeView === "marketing" ? "is-active" : ""}`}
+            onClick={() => setActiveView("marketing")}
+          >
+            Marketing
           </button>
         </div>
 
