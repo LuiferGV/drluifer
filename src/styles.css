@@ -302,6 +302,7 @@ a {
 .ghost-button,
 .danger-button,
 .nav-toggle {
+  position: relative;
   background: rgba(255, 255, 255, 0.035);
   border-color: var(--border-soft);
   color: var(--text-strong);
@@ -329,6 +330,40 @@ a {
   border-color: rgba(69, 167, 255, 0.34);
   color: var(--gold-200);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.nav-toggle--priority {
+  min-width: 148px;
+  padding-inline: 24px;
+  border-color: rgba(84, 224, 196, 0.26);
+  background:
+    radial-gradient(circle at 12% 50%, rgba(84, 224, 196, 0.18), transparent 32%),
+    linear-gradient(180deg, rgba(18, 36, 40, 0.94), rgba(11, 22, 28, 0.98));
+  box-shadow:
+    0 12px 24px rgba(5, 15, 22, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nav-toggle--priority::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  margin-right: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #54e0c4 0%, #8cd2ff 100%);
+  box-shadow: 0 0 16px rgba(84, 224, 196, 0.45);
+}
+
+.nav-toggle--priority.is-active {
+  background:
+    radial-gradient(circle at 12% 50%, rgba(84, 224, 196, 0.22), transparent 34%),
+    linear-gradient(135deg, rgba(69, 167, 255, 0.2), rgba(84, 224, 196, 0.16));
+  border-color: rgba(84, 224, 196, 0.42);
+  color: #e7fffa;
+  box-shadow:
+    0 16px 30px rgba(6, 18, 28, 0.26),
+    0 0 0 1px rgba(84, 224, 196, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .primary-button:hover,

@@ -2273,7 +2273,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className={`nav-toggle ${activeView === "patients" ? "is-active" : ""}`}
+            className={`nav-toggle nav-toggle--priority ${activeView === "patients" ? "is-active" : ""}`}
             onClick={() => setActiveView("patients")}
           >
             Pacientes
