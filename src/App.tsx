@@ -466,7 +466,7 @@ function defaultMarketingExpenseValues(expense?: Expense) {
 
 export default function App() {
   const { sessionState, userEmail, authError, isSubmitting, login, logout } = useFirebaseSession();
-  const { patients: sourcePatients, expenses: sourceExpenses, dataSource, firebaseState } = useClinicData(
+  const { patients: sourcePatients, expenses: sourceExpenses } = useClinicData(
     sessionState === "authenticated"
   );
   const [clinicPatients, setClinicPatients] = useState<Patient[]>(() => preparePatients(sourcePatients));
@@ -2036,17 +2036,6 @@ export default function App() {
     );
   }
 
-  const dataSourceLabel =
-    dataSource === "demo"
-      ? "Modo demo local"
-      : firebaseState === "connected"
-        ? "Firebase en tiempo real"
-        : firebaseState === "loading"
-          ? "Cargando base clinica..."
-          : firebaseState === "error"
-            ? "Error de sincronizacion"
-            : "Firebase listo";
-
   const syncPillClass =
     syncState === "saved"
       ? "status-pill status-pill--success"
@@ -2260,7 +2249,6 @@ export default function App() {
         </div>
 
         <div className="topbar__actions">
-          <span className="status-pill status-pill--neutral">{dataSourceLabel}</span>
           {syncMessage ? <span className={syncPillClass}>{syncMessage}</span> : null}
           {userEmail ? <span className="status-pill status-pill--neutral">{userEmail}</span> : null}
           <button type="button" className="outline-button" onClick={handleLogout}>

@@ -143,8 +143,8 @@ a {
 
 .brand-logo {
   display: block;
-  width: min(216px, 100%);
-  max-height: 108px;
+  width: min(432px, 100%);
+  max-height: 216px;
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.18));
