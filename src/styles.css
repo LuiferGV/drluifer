@@ -196,6 +196,7 @@ a {
 .filter-grid,
 .mini-metrics,
 .profile-strip,
+.control-bar__nav,
 .view-switcher {
   display: flex;
   gap: 12px;
@@ -333,6 +334,7 @@ a {
 }
 
 .nav-toggle--priority {
+  flex: 0 0 auto;
   min-width: 148px;
   padding-inline: 24px;
   border-color: rgba(84, 224, 196, 0.26);
@@ -381,6 +383,8 @@ a {
 
 .control-bar {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 16px;
   margin-top: 18px;
   padding: 18px 22px;
@@ -391,6 +395,16 @@ a {
   background:
     radial-gradient(circle at top left, rgba(69, 167, 255, 0.08), transparent 22%),
     var(--surface-soft);
+}
+
+.control-bar__nav {
+  align-items: center;
+  min-width: 0;
+}
+
+.view-switcher {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .month-control {
@@ -2306,9 +2320,22 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .control-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .control-bar__nav,
   .workspace-actions,
   .view-switcher,
   .period-picker {
+    width: 100%;
+  }
+
+  .control-bar__nav {
+    display: grid;
+  }
+
+  .nav-toggle--priority {
     width: 100%;
   }
 

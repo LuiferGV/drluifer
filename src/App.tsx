@@ -2267,33 +2267,36 @@ export default function App() {
       </header>
 
       <section className="control-bar">
-        <div className="view-switcher">
-          <button type="button" className={`nav-toggle ${activeView === "home" ? "is-active" : ""}`} onClick={() => setActiveView("home")}>
-            Inicio
-          </button>
+        <div className="control-bar__nav">
+          <div className="view-switcher">
+            <button type="button" className={`nav-toggle ${activeView === "home" ? "is-active" : ""}`} onClick={() => setActiveView("home")}>
+              Inicio
+            </button>
+            <button type="button" className={`nav-toggle ${activeView === "alerts" ? "is-active" : ""}`} onClick={() => setActiveView("alerts")}>
+              Alertas
+            </button>
+            <button
+              type="button"
+              className={`nav-toggle ${activeView === "finance" ? "is-active" : ""}`}
+              onClick={() => setActiveView("finance")}
+            >
+              Finanzas
+            </button>
+            <button
+              type="button"
+              className={`nav-toggle ${activeView === "marketing" ? "is-active" : ""}`}
+              onClick={() => setActiveView("marketing")}
+            >
+              Marketing
+            </button>
+          </div>
+
           <button
             type="button"
             className={`nav-toggle nav-toggle--priority ${activeView === "patients" ? "is-active" : ""}`}
             onClick={() => setActiveView("patients")}
           >
             Pacientes
-          </button>
-          <button type="button" className={`nav-toggle ${activeView === "alerts" ? "is-active" : ""}`} onClick={() => setActiveView("alerts")}>
-            Alertas
-          </button>
-          <button
-            type="button"
-            className={`nav-toggle ${activeView === "finance" ? "is-active" : ""}`}
-            onClick={() => setActiveView("finance")}
-          >
-            Finanzas
-          </button>
-          <button
-            type="button"
-            className={`nav-toggle ${activeView === "marketing" ? "is-active" : ""}`}
-            onClick={() => setActiveView("marketing")}
-          >
-            Marketing
           </button>
         </div>
 
