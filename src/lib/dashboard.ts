@@ -43,7 +43,7 @@ export function getClinicAlerts(patients: Patient[]): ClinicAlert[] {
 }
 
 export function filterAlerts(alerts: ClinicAlert[], filter: AlertFilter): ClinicAlert[] {
-  if (filter === "all") return alerts.filter((alert) => alert.bucket !== "future");
+  if (filter === "all") return alerts;
   return alerts.filter((alert) => alert.bucket === filter);
 }
 
@@ -52,7 +52,8 @@ export function getAlertCounts(alerts: ClinicAlert[]) {
     vencido: alerts.filter((alert) => alert.bucket === "vencido").length,
     today: alerts.filter((alert) => alert.bucket === "today").length,
     next7: alerts.filter((alert) => alert.bucket === "next7").length,
-    next30: alerts.filter((alert) => alert.bucket === "next30").length
+    next30: alerts.filter((alert) => alert.bucket === "next30").length,
+    future: alerts.filter((alert) => alert.bucket === "future").length
   };
 }
 
@@ -230,7 +231,8 @@ export function getBucketLabel(bucket: AlertFilter): string {
     vencido: "Vencidos",
     today: "Hoy",
     next7: "Prox. 7 dias",
-    next30: "Prox. 30 dias"
+    next30: "Prox. 30 dias",
+    future: "Futuras"
   };
 
   return labels[bucket];

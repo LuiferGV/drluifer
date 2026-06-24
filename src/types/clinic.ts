@@ -14,7 +14,7 @@ export type FollowUpStatus =
 
 export type FollowUpBucket = "vencido" | "today" | "next7" | "next30" | "future";
 
-export type AlertFilter = "all" | "vencido" | "today" | "next7" | "next30";
+export type AlertFilter = "all" | "vencido" | "today" | "next7" | "next30" | "future";
 
 export type PatientTab =
   | "overview"

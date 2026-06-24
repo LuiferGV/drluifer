@@ -15,7 +15,7 @@ interface AlertBoardProps {
   onOpenPatient: (patientId: string) => void;
 }
 
-const filterOrder: AlertFilter[] = ["all", "vencido", "today", "next7", "next30"];
+const filterOrder: AlertFilter[] = ["all", "vencido", "today", "next7", "next30", "future"];
 
 export function AlertBoard({
   alerts,
@@ -25,7 +25,7 @@ export function AlertBoard({
 }: AlertBoardProps) {
   const visibleAlerts = filterAlerts(alerts, activeFilter);
   const counts = getAlertCounts(alerts);
-  const allCount = counts.vencido + counts.today + counts.next7 + counts.next30;
+  const allCount = alerts.length;
 
   return (
     <section className="surface-card">
@@ -48,7 +48,9 @@ export function AlertBoard({
                   ? counts.today
                   : filter === "next7"
                     ? counts.next7
-                    : counts.next30;
+                    : filter === "next30"
+                      ? counts.next30
+                      : counts.future;
 
           return (
             <button
@@ -95,4 +97,3 @@ export function AlertBoard({
     </section>
   );
 }
-

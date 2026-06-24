@@ -601,7 +601,7 @@ export default function App() {
   const collectedEntries = getCollectedIncomeEntries(clinicPatients, periodRange);
   const periodExpenses = getPeriodExpenses(clinicPatients, clinicExpenses, periodRange);
   const marketingData = getMarketingDashboardData(clinicPatients, clinicExpenses, periodRange);
-  const activeAlertsCount = alerts.filter((alert) => alert.bucket !== "future").length;
+  const activeAlertsCount = alerts.length;
   const urgentAlertsCount = alerts.filter((alert) => alert.bucket === "vencido" || alert.bucket === "today").length;
 
   const patientOptions = useMemo(
@@ -2208,9 +2208,13 @@ export default function App() {
                 <p className="eyebrow">Alertas</p>
                 <h3>Controles y vencimientos</h3>
               </div>
-              <span className="action-tile__count">{urgentAlertsCount}</span>
+              <span className="action-tile__count">{activeAlertsCount}</span>
             </div>
-            <p className="action-tile__meta">Ver vencidos, hoy y proximos controles sin saturar el inicio.</p>
+            <p className="action-tile__meta">
+              {urgentAlertsCount > 0
+                ? `${urgentAlertsCount} urgente(s), mas controles proximos y futuros.`
+                : "Ver vencidos, hoy, proximos y futuros controles sin saturar el inicio."}
+            </p>
           </button>
 
           <button type="button" className="action-tile action-tile--finance" onClick={() => setActiveView("finance")}>
