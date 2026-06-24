@@ -158,6 +158,7 @@ export interface ClinicAlert {
   patientId: string;
   patientName: string;
   patientPhone: string;
+  daysUntilDue: number;
   dueDate: string;
   eventDate: string;
   type: string;

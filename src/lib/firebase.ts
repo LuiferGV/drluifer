@@ -268,6 +268,23 @@ export function subscribeExpenses(
   );
 }
 
+export function subscribeServerTimeOffset(
+  onChange: (offsetMs: number) => void,
+  onError?: (error: Error) => void
+) {
+  const database = ensureDatabase();
+  const offsetRef = ref(database, ".info/serverTimeOffset");
+
+  return onValue(
+    offsetRef,
+    (snapshot) => {
+      const offsetMs = snapshot.val();
+      onChange(typeof offsetMs === "number" ? offsetMs : 0);
+    },
+    (error) => onError?.(error)
+  );
+}
+
 export async function savePatient(patient: Patient) {
   const database = ensureDatabase();
   await set(ref(database, `odontologia/pacientes/${patient.id}`), serializePatient(patient));

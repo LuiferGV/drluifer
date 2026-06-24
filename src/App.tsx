@@ -19,7 +19,8 @@ import {
   deletePatient as deletePatientRecord,
   hasRealtimeDatabaseConfig,
   saveExpense as saveGeneralExpense,
-  savePatient
+  savePatient,
+  subscribeServerTimeOffset
 } from "./lib/firebase";
 import {
   createBudgetItem,
@@ -134,8 +135,8 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function currentMonthKey() {
-  return getMonthKey(new Date());
+function currentMonthKey(referenceDate = new Date()) {
+  return getMonthKey(referenceDate);
 }
 
 function createId(prefix: string) {
@@ -471,6 +472,8 @@ export default function App() {
   );
   const [clinicPatients, setClinicPatients] = useState<Patient[]>(() => preparePatients(sourcePatients));
   const [clinicExpenses, setClinicExpenses] = useState<Expense[]>(() => sourceExpenses);
+  const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState(0);
+  const [timeRefreshToken, setTimeRefreshToken] = useState(() => Date.now());
   const [currentCalendarMonth, setCurrentCalendarMonth] = useState(() => currentMonthKey());
   const [periodStartMonth, setPeriodStartMonth] = useState(() => currentMonthKey());
   const [periodEndMonth, setPeriodEndMonth] = useState(() => currentMonthKey());
@@ -498,6 +501,46 @@ export default function App() {
   useEffect(() => {
     setClinicExpenses(sourceExpenses);
   }, [sourceExpenses]);
+
+  useEffect(() => {
+    if (sessionState !== "authenticated" || !hasRealtimeDatabaseConfig()) {
+      setServerTimeOffsetMs(0);
+      return undefined;
+    }
+
+    return subscribeServerTimeOffset(
+      (offsetMs) => setServerTimeOffsetMs(offsetMs),
+      (error) => {
+        console.error("No se pudo leer la hora de referencia desde Firebase", error);
+        setServerTimeOffsetMs(0);
+      }
+    );
+  }, [sessionState]);
+
+  useEffect(() => {
+    const refreshClock = () => setTimeRefreshToken(Date.now());
+    const intervalId = window.setInterval(refreshClock, 60000);
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        refreshClock();
+      }
+    };
+
+    window.addEventListener("focus", refreshClock);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshClock);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+    };
+  }, []);
+
+  const referenceNow = useMemo(
+    () => new Date(timeRefreshToken + serverTimeOffsetMs),
+    [serverTimeOffsetMs, timeRefreshToken]
+  );
 
   useEffect(() => {
     if (sessionState === "authenticated") {
@@ -531,39 +574,9 @@ export default function App() {
   }, [showPeriodPanel]);
 
   useEffect(() => {
-    let timeoutId = 0;
-
-    const syncCalendarMonth = () => {
-      const nextMonth = currentMonthKey();
-      setCurrentCalendarMonth((currentMonth) => (currentMonth === nextMonth ? currentMonth : nextMonth));
-    };
-
-    const scheduleNextSync = () => {
-      const now = new Date();
-      const nextCheck = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
-      timeoutId = window.setTimeout(() => {
-        syncCalendarMonth();
-        scheduleNextSync();
-      }, Math.max(nextCheck.getTime() - now.getTime(), 1000));
-    };
-
-    const handleVisibilitySync = () => {
-      if (document.visibilityState === "visible") {
-        syncCalendarMonth();
-      }
-    };
-
-    syncCalendarMonth();
-    scheduleNextSync();
-    window.addEventListener("focus", syncCalendarMonth);
-    document.addEventListener("visibilitychange", handleVisibilitySync);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener("focus", syncCalendarMonth);
-      document.removeEventListener("visibilitychange", handleVisibilitySync);
-    };
-  }, []);
+    const nextMonth = currentMonthKey(referenceNow);
+    setCurrentCalendarMonth((currentMonth) => (currentMonth === nextMonth ? currentMonth : nextMonth));
+  }, [referenceNow]);
 
   useEffect(() => {
     if (!isPeriodAuto) return;
@@ -595,7 +608,7 @@ export default function App() {
   const periodRange = useMemo(() => normalizeMonthRange(periodStartMonth, periodEndMonth), [periodEndMonth, periodStartMonth]);
   const periodLabel = useMemo(() => formatMonthRangeLabel(periodRange), [periodRange]);
   const selectedPatient = filteredPatients.find((patient) => patient.id === selectedPatientId) ?? null;
-  const alerts = getClinicAlerts(clinicPatients);
+  const alerts = getClinicAlerts(clinicPatients, referenceNow);
   const metrics = getDashboardMetrics(clinicPatients, clinicExpenses, periodRange);
   const pendingCollections = getPendingCollections(clinicPatients, periodRange);
   const collectedEntries = getCollectedIncomeEntries(clinicPatients, periodRange);

@@ -12,8 +12,7 @@ import type {
   Patient
 } from "../types/clinic";
 
-function getAlertBucket(followUp: FollowUp): FollowUpBucket {
-  const daysDiff = getDaysDiff(followUp.dueDate);
+function getAlertBucket(daysDiff: number): FollowUpBucket {
   if (daysDiff < 0) return "vencido";
   if (daysDiff === 0) return "today";
   if (daysDiff <= 7) return "next7";
@@ -21,23 +20,28 @@ function getAlertBucket(followUp: FollowUp): FollowUpBucket {
   return "future";
 }
 
-export function getClinicAlerts(patients: Patient[]): ClinicAlert[] {
+export function getClinicAlerts(patients: Patient[], referenceNow = new Date()): ClinicAlert[] {
   return patients
     .flatMap((patient) =>
       patient.followUps
         .filter((followUp) => followUp.status === "Pendiente" || followUp.status === "Reprogramado")
-        .map((followUp) => ({
-          id: `${patient.id}-${followUp.id}`,
-          patientId: patient.id,
-          patientName: patient.fullName,
-          patientPhone: patient.phone,
-          dueDate: followUp.dueDate,
-          eventDate: followUp.eventDate,
-          type: followUp.type,
-          source: followUp.source,
-          notes: followUp.notes,
-          bucket: getAlertBucket(followUp)
-        }))
+        .map((followUp) => {
+          const daysUntilDue = getDaysDiff(followUp.dueDate, referenceNow);
+
+          return {
+            id: `${patient.id}-${followUp.id}`,
+            patientId: patient.id,
+            patientName: patient.fullName,
+            patientPhone: patient.phone,
+            daysUntilDue,
+            dueDate: followUp.dueDate,
+            eventDate: followUp.eventDate,
+            type: followUp.type,
+            source: followUp.source,
+            notes: followUp.notes,
+            bucket: getAlertBucket(daysUntilDue)
+          };
+        })
     )
     .sort((left, right) => left.dueDate.localeCompare(right.dueDate));
 }
@@ -246,10 +250,9 @@ export function getBucketTone(bucket: FollowUpBucket): string {
 }
 
 export function getDuePill(alert: ClinicAlert): string {
-  const daysDiff = getDaysDiff(alert.dueDate);
-  if (daysDiff < 0) return `Vencido hace ${Math.abs(daysDiff)} dia(s)`;
-  if (daysDiff === 0) return "Vence hoy";
-  if (daysDiff <= 7) return `En ${daysDiff} dia(s)`;
+  if (alert.daysUntilDue < 0) return `Vencido hace ${Math.abs(alert.daysUntilDue)} dia(s)`;
+  if (alert.daysUntilDue === 0) return "Vence hoy";
+  if (alert.daysUntilDue <= 7) return `En ${alert.daysUntilDue} dia(s)`;
   return formatDate(alert.dueDate);
 }
 
