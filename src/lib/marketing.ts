@@ -7,8 +7,11 @@ export interface MarketingIncomeEntry {
   concept: string;
   date: string;
   amount: number;
+  totalAmount: number;
+  pendingAmount: number;
   costAmount: number;
   profitAmount: number;
+  hasPayment: boolean;
   method?: string;
 }
 
@@ -49,19 +52,19 @@ export function getMarketingExpenses(expenses: Expense[], selectedPeriod: MonthR
 export function getMarketingIncomeEntries(patients: Patient[], selectedPeriod: MonthRange): MarketingIncomeEntry[] {
   return patients
     .flatMap((patient) =>
-      patient.finances.flatMap((entry) => {
+      patient.finances.flatMap<MarketingIncomeEntry>((entry): MarketingIncomeEntry[] => {
         const linkedTreatmentCost = patient.patientExpenses
           .filter((expense) => expense.linkedTreatmentId && expense.linkedTreatmentId === entry.linkedTreatmentId)
           .reduce((sum, expense) => sum + expense.amount, 0);
         const allocationBase = Math.max(entry.totalAmount, entry.paidAmount, 0);
+        const marketingPayments = entry.payments.filter(
+          (payment) =>
+            isDateWithinMonthRange(payment.date, selectedPeriod) &&
+            (Boolean(payment.fromMarketing) || Boolean(entry.fromMarketing))
+        );
 
-        return entry.payments
-          .filter(
-            (payment) =>
-              isDateWithinMonthRange(payment.date, selectedPeriod) &&
-              (Boolean(payment.fromMarketing) || Boolean(entry.fromMarketing))
-          )
-          .map((payment) => {
+        if (marketingPayments.length > 0) {
+          return marketingPayments.map((payment) => {
             const costRatio = allocationBase > 0 ? Math.min(payment.amount / allocationBase, 1) : 0;
             const costAmount = linkedTreatmentCost > 0 ? Math.round(linkedTreatmentCost * costRatio) : 0;
 
@@ -71,11 +74,35 @@ export function getMarketingIncomeEntries(patients: Patient[], selectedPeriod: M
               concept: entry.concept,
               date: payment.date,
               amount: payment.amount,
+              totalAmount: entry.totalAmount,
+              pendingAmount: entry.pendingAmount,
               costAmount,
               profitAmount: payment.amount - costAmount,
-              method: payment.method
+              hasPayment: true,
+              method: payment.method || undefined
             };
           });
+        }
+
+        if (entry.fromMarketing && isDateWithinMonthRange(entry.date, selectedPeriod)) {
+          return [
+            {
+              patientId: patient.id,
+              patientName: patient.fullName,
+              concept: entry.concept,
+              date: entry.date,
+              amount: 0,
+              totalAmount: entry.totalAmount,
+              pendingAmount: entry.pendingAmount,
+              costAmount: 0,
+              profitAmount: 0,
+              hasPayment: false,
+              method: undefined
+            }
+          ];
+        }
+
+        return [];
       })
     )
     .sort((left, right) => right.date.localeCompare(left.date));

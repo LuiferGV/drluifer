@@ -103,10 +103,26 @@ export function MarketingDashboard({
                       {entry.concept} | {formatDate(entry.date)}
                       {entry.method ? ` | ${entry.method}` : ""}
                     </p>
-                    <p className="list-card__meta">Ingreso {formatGs(entry.amount)}</p>
-                    <p className="list-card__meta">
-                      Costo clinico {formatGs(entry.costAmount)} | Ganancia {formatGs(entry.profitAmount)}
-                    </p>
+                    {entry.hasPayment ? (
+                      <>
+                        <p className="list-card__meta">Ingreso {formatGs(entry.amount)}</p>
+                        <p className="list-card__meta">
+                          Costo clinico {formatGs(entry.costAmount)} | Ganancia {formatGs(entry.profitAmount)}
+                        </p>
+                        {entry.pendingAmount > 0 ? (
+                          <p className="list-card__meta">
+                            Total {formatGs(entry.totalAmount)} | Pendiente {formatGs(entry.pendingAmount)}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <p className="list-card__meta">Caso marcado como marketing, sin cobro registrado todavia.</p>
+                        <p className="list-card__meta">
+                          Total {formatGs(entry.totalAmount)} | Pendiente {formatGs(entry.pendingAmount)}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <button type="button" className="ghost-button" onClick={() => onOpenPatient(entry.patientId)}>
                     Abrir ficha
