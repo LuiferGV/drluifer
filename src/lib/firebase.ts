@@ -205,9 +205,29 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
   };
 }
 
+function sanitizeRealtimeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeRealtimeValue(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((accumulator, [key, entry]) => {
+      const sanitizedEntry = sanitizeRealtimeValue(entry);
+      if (sanitizedEntry !== undefined) {
+        accumulator[key] = sanitizedEntry;
+      }
+      return accumulator;
+    }, {});
+  }
+
+  return value === undefined ? undefined : value;
+}
+
 function serializePatient(patient: Patient): Omit<Patient, "id"> {
   const { id: _id, ...patientPayload } = patient;
-  return patientPayload;
+  return sanitizeRealtimeValue(patientPayload) as Omit<Patient, "id">;
 }
 
 export function subscribeAuth(
@@ -298,7 +318,7 @@ export async function deletePatient(patientId: string) {
 export async function saveExpense(expense: Expense) {
   const database = ensureDatabase();
   const { id, ...expensePayload } = expense;
-  await set(ref(database, `odontologia/egresos/${id}`), expensePayload);
+  await set(ref(database, `odontologia/egresos/${id}`), sanitizeRealtimeValue(expensePayload));
 }
 
 export async function deleteExpense(expenseId: string) {
