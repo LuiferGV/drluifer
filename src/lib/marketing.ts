@@ -7,6 +7,8 @@ export interface MarketingIncomeEntry {
   concept: string;
   date: string;
   amount: number;
+  costAmount: number;
+  profitAmount: number;
   method?: string;
 }
 
@@ -15,6 +17,8 @@ export interface MarketingDashboardData {
   agencyAmount: number;
   cardAmount: number;
   incomeAmount: number;
+  treatmentCostAmount: number;
+  contributionAmount: number;
   netAmount: number;
   roas: number | null;
   marketingPatientsCount: number;
@@ -45,18 +49,30 @@ export function getMarketingExpenses(expenses: Expense[], selectedPeriod: MonthR
 export function getMarketingIncomeEntries(patients: Patient[], selectedPeriod: MonthRange): MarketingIncomeEntry[] {
   return patients
     .flatMap((patient) =>
-      patient.finances.flatMap((entry) =>
-        entry.payments
+      patient.finances.flatMap((entry) => {
+        const linkedTreatmentCost = patient.patientExpenses
+          .filter((expense) => expense.linkedTreatmentId && expense.linkedTreatmentId === entry.linkedTreatmentId)
+          .reduce((sum, expense) => sum + expense.amount, 0);
+        const allocationBase = Math.max(entry.totalAmount, entry.paidAmount, 0);
+
+        return entry.payments
           .filter((payment) => payment.fromMarketing && isDateWithinMonthRange(payment.date, selectedPeriod))
-          .map((payment) => ({
-            patientId: patient.id,
-            patientName: patient.fullName,
-            concept: entry.concept,
-            date: payment.date,
-            amount: payment.amount,
-            method: payment.method
-          }))
-      )
+          .map((payment) => {
+            const costRatio = allocationBase > 0 ? Math.min(payment.amount / allocationBase, 1) : 0;
+            const costAmount = linkedTreatmentCost > 0 ? Math.round(linkedTreatmentCost * costRatio) : 0;
+
+            return {
+              patientId: patient.id,
+              patientName: patient.fullName,
+              concept: entry.concept,
+              date: payment.date,
+              amount: payment.amount,
+              costAmount,
+              profitAmount: payment.amount - costAmount,
+              method: payment.method
+            };
+          });
+      })
     )
     .sort((left, right) => right.date.localeCompare(left.date));
 }
@@ -76,6 +92,8 @@ export function getMarketingDashboardData(
     .filter((expense) => normalizeText(expense.paymentMethod) === "tarjeta")
     .reduce((sum, expense) => sum + expense.amount, 0);
   const incomeAmount = marketingIncomeEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const treatmentCostAmount = marketingIncomeEntries.reduce((sum, entry) => sum + entry.costAmount, 0);
+  const contributionAmount = marketingIncomeEntries.reduce((sum, entry) => sum + entry.profitAmount, 0);
   const marketingPatientsCount = new Set(marketingIncomeEntries.map((entry) => entry.patientId)).size;
 
   return {
@@ -83,7 +101,9 @@ export function getMarketingDashboardData(
     agencyAmount,
     cardAmount,
     incomeAmount,
-    netAmount: incomeAmount - spendAmount,
+    treatmentCostAmount,
+    contributionAmount,
+    netAmount: contributionAmount - spendAmount,
     roas: spendAmount > 0 ? incomeAmount / spendAmount : null,
     marketingPatientsCount,
     expenses: marketingExpenses,

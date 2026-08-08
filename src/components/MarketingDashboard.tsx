@@ -8,6 +8,8 @@ interface MarketingDashboardProps {
   agencyAmount: number;
   cardAmount: number;
   incomeAmount: number;
+  treatmentCostAmount: number;
+  contributionAmount: number;
   netAmount: number;
   roas: number | null;
   marketingPatientsCount: number;
@@ -29,6 +31,8 @@ export function MarketingDashboard({
   agencyAmount,
   cardAmount,
   incomeAmount,
+  treatmentCostAmount,
+  contributionAmount,
   netAmount,
   roas,
   marketingPatientsCount,
@@ -60,22 +64,22 @@ export function MarketingDashboard({
             tone="obsidian"
           />
           <MetricCard
-            label="Pagado a agencia"
-            value={formatGs(agencyAmount)}
-            detail="Suma de gastos marcados como Agencia"
-            tone="gold"
-          />
-          <MetricCard
-            label="Gastado con tarjeta"
-            value={formatGs(cardAmount)}
-            detail="Solo egresos de marketing pagados con tarjeta"
-            tone="ruby"
-          />
-          <MetricCard
             label="Ingreso por marketing"
             value={formatGs(incomeAmount)}
             detail={`${marketingPatientsCount} paciente(s) con cobros marcados como marketing`}
             tone="emerald"
+          />
+          <MetricCard
+            label="Costo clinico atribuido"
+            value={formatGs(treatmentCostAmount)}
+            detail="Costos del tratamiento vinculados a esos cobros"
+            tone="ruby"
+          />
+          <MetricCard
+            label="Ganancia clinica"
+            value={formatGs(contributionAmount)}
+            detail="Ingreso de marketing menos costo clinico del tratamiento"
+            tone="gold"
           />
         </div>
       </section>
@@ -99,7 +103,10 @@ export function MarketingDashboard({
                       {entry.concept} | {formatDate(entry.date)}
                       {entry.method ? ` | ${entry.method}` : ""}
                     </p>
-                    <p className="list-card__meta">{formatGs(entry.amount)}</p>
+                    <p className="list-card__meta">Ingreso {formatGs(entry.amount)}</p>
+                    <p className="list-card__meta">
+                      Costo clinico {formatGs(entry.costAmount)} | Ganancia {formatGs(entry.profitAmount)}
+                    </p>
                   </div>
                   <button type="button" className="ghost-button" onClick={() => onOpenPatient(entry.patientId)}>
                     Abrir ficha
@@ -170,7 +177,15 @@ export function MarketingDashboard({
 
         <div className="mini-metrics">
           <article className="mini-metric">
-            <span>Resultado neto</span>
+            <span>Pagado a agencia</span>
+            <strong>{formatGs(agencyAmount)}</strong>
+          </article>
+          <article className="mini-metric">
+            <span>Gastado con tarjeta</span>
+            <strong>{formatGs(cardAmount)}</strong>
+          </article>
+          <article className="mini-metric">
+            <span>Resultado final</span>
             <strong>{formatGs(netAmount)}</strong>
           </article>
           <article className="mini-metric">
@@ -189,8 +204,8 @@ export function MarketingDashboard({
 
         <p className="reading-block marketing-reading-block">
           {netAmount >= 0
-            ? "Marketing esta dejando saldo positivo en este periodo segun los cobros marcados y los gastos cargados."
-            : "Marketing esta en negativo en este periodo. Conviene revisar campanas, agencia y pagos con tarjeta."}
+            ? "Marketing esta dejando ganancia despues de descontar costo clinico y gasto publicitario del periodo."
+            : "Marketing esta en negativo despues de descontar costo clinico y gasto publicitario. Conviene revisar campanas y margenes."}
         </p>
       </section>
     </section>

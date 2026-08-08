@@ -143,6 +143,8 @@ function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const ATTENTION_PAYMENT_NOTE = "Pago registrado junto con la atencion.";
+
 function parseTags(value: string) {
   return value
     .split(",")
@@ -209,6 +211,40 @@ function syncTreatmentsFromFinances(treatments: Treatment[], finances: FinanceEn
   );
 }
 
+function getEditableTreatmentMarketingPayments(finance: FinanceEntry | null | undefined) {
+  if (!finance) return [];
+
+  const attentionPayments = finance.payments.filter((payment) => payment.note === ATTENTION_PAYMENT_NOTE);
+  if (attentionPayments.length > 0) {
+    return attentionPayments;
+  }
+
+  return finance.payments.length === 1 ? finance.payments : [];
+}
+
+function hasTreatmentMarketingPayments(finance: FinanceEntry | null | undefined) {
+  return getEditableTreatmentMarketingPayments(finance).some((payment) => Boolean(payment.fromMarketing));
+}
+
+function syncTreatmentMarketingPayments(finance: FinanceEntry, nextFromMarketing: boolean) {
+  const editablePaymentIds = new Set(getEditableTreatmentMarketingPayments(finance).map((payment) => payment.id));
+  if (editablePaymentIds.size === 0) {
+    return finance;
+  }
+
+  return syncFinanceEntry({
+    ...finance,
+    payments: finance.payments.map((payment) =>
+      editablePaymentIds.has(payment.id)
+        ? {
+            ...payment,
+            fromMarketing: nextFromMarketing
+          }
+        : payment
+    )
+  });
+}
+
 function buildTreatmentFinanceEntry(
   treatmentId: string,
   values: Record<string, string>,
@@ -229,7 +265,7 @@ function buildTreatmentFinanceEntry(
             date: values.date || todayKey(),
             amount: createPaymentDelta,
             method: "Efectivo",
-            note: "Pago registrado junto con la atencion.",
+            note: ATTENTION_PAYMENT_NOTE,
             fromMarketing: values.paidFromMarketing === "true"
           }),
           ...currentPayments
@@ -290,7 +326,7 @@ function buildAttentionPayload(values: AttentionFormValues) {
                 date: referenceDate,
                 amount: paidTodayAmount,
                 method: "Efectivo",
-                note: "Pago registrado junto con la atencion.",
+                note: ATTENTION_PAYMENT_NOTE,
                 fromMarketing: item.paidFromMarketing
               })
             ]
@@ -1017,7 +1053,11 @@ export default function App() {
       const treatmentId = itemId ?? createId("treatment");
       const totalAmount = toAmount(values.totalAmount);
       const practitioner = normalizePractitionerName(values.practitioner);
-      const linkedFinance = buildTreatmentFinanceEntry(treatmentId, values, existingFinance ?? undefined);
+      const baseLinkedFinance = buildTreatmentFinanceEntry(treatmentId, values, existingFinance ?? undefined);
+      const linkedFinance =
+        itemId && existingFinance
+          ? syncTreatmentMarketingPayments(baseLinkedFinance, values.fromMarketing === "true")
+          : baseLinkedFinance;
 
       const nextItem: Treatment = {
         id: treatmentId,
@@ -1438,7 +1478,7 @@ export default function App() {
         },
         { name: "totalAmount", label: "Monto del tratamiento", type: "number", min: 0, step: "1", required: true },
         ...(itemId
-          ? []
+          ? [{ name: "fromMarketing", label: "El cobro de esta atencion vino de marketing", type: "checkbox" } as ModalField]
           : [
               { name: "paidAmount", label: "Cuanto pago hoy", type: "number", min: 0, step: "1" } as ModalField,
               { name: "paidFromMarketing", label: "Este cobro vino de marketing", type: "checkbox" } as ModalField
@@ -1574,6 +1614,12 @@ export default function App() {
 
     if (kind === "treatment") {
       const item = itemId ? patient?.treatments.find((entry) => entry.id === itemId) ?? null : null;
+      const linkedFinance =
+        item && patient
+          ? patient.finances.find(
+              (entry) => entry.id === item.linkedFinanceId || entry.linkedTreatmentId === item.id
+            ) ?? null
+          : null;
       return {
         patientTarget: defaultPatientTarget,
         date: item?.date ?? todayKey(),
@@ -1583,6 +1629,7 @@ export default function App() {
         totalAmount: item ? String(item.totalAmount) : "",
         paidAmount: "",
         paidFromMarketing: "false",
+        fromMarketing: hasTreatmentMarketingPayments(linkedFinance) ? "true" : "false",
         status: item?.status ?? "Realizado",
         note: item?.note ?? ""
       };
@@ -2165,6 +2212,8 @@ export default function App() {
             agencyAmount={marketingData.agencyAmount}
             cardAmount={marketingData.cardAmount}
             incomeAmount={marketingData.incomeAmount}
+            treatmentCostAmount={marketingData.treatmentCostAmount}
+            contributionAmount={marketingData.contributionAmount}
             netAmount={marketingData.netAmount}
             roas={marketingData.roas}
             marketingPatientsCount={marketingData.marketingPatientsCount}
