@@ -219,7 +219,7 @@ function getEditableTreatmentMarketingPayments(finance: FinanceEntry | null | un
     return attentionPayments;
   }
 
-  return finance.payments.length === 1 ? finance.payments : [];
+  return finance.payments;
 }
 
 function hasTreatmentMarketingPayments(finance: FinanceEntry | null | undefined) {
