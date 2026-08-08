@@ -72,6 +72,7 @@ export function syncFinanceEntry(entry: FinanceEntry): FinanceEntry {
 
   return {
     ...entry,
+    fromMarketing: Boolean(entry.fromMarketing),
     totalAmount,
     payments,
     paidAmount,

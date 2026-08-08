@@ -134,6 +134,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
       date: String(entry.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
       concept: String(entry.concept || "Sin concepto"),
       practitioner: entry.practitioner ? String(entry.practitioner) : undefined,
+      fromMarketing: Boolean(entry.fromMarketing),
       status: String(entry.status || ""),
       totalAmount: Number(entry.totalAmount || 0),
       paidAmount: Number(entry.paidAmount || 0),

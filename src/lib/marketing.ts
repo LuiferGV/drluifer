@@ -56,7 +56,11 @@ export function getMarketingIncomeEntries(patients: Patient[], selectedPeriod: M
         const allocationBase = Math.max(entry.totalAmount, entry.paidAmount, 0);
 
         return entry.payments
-          .filter((payment) => payment.fromMarketing && isDateWithinMonthRange(payment.date, selectedPeriod))
+          .filter(
+            (payment) =>
+              isDateWithinMonthRange(payment.date, selectedPeriod) &&
+              (Boolean(payment.fromMarketing) || Boolean(entry.fromMarketing))
+          )
           .map((payment) => {
             const costRatio = allocationBase > 0 ? Math.min(payment.amount / allocationBase, 1) : 0;
             const costAmount = linkedTreatmentCost > 0 ? Math.round(linkedTreatmentCost * costRatio) : 0;

@@ -106,6 +106,7 @@ export interface FinanceEntry {
   date: string;
   concept: string;
   practitioner?: string;
+  fromMarketing?: boolean;
   status: string;
   totalAmount: number;
   paidAmount: number;

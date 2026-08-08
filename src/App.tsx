@@ -228,21 +228,59 @@ function hasTreatmentMarketingPayments(finance: FinanceEntry | null | undefined)
 
 function syncTreatmentMarketingPayments(finance: FinanceEntry, nextFromMarketing: boolean) {
   const editablePaymentIds = new Set(getEditableTreatmentMarketingPayments(finance).map((payment) => payment.id));
-  if (editablePaymentIds.size === 0) {
-    return finance;
-  }
 
   return syncFinanceEntry({
     ...finance,
+    fromMarketing: nextFromMarketing,
     payments: finance.payments.map((payment) =>
       editablePaymentIds.has(payment.id)
         ? {
-            ...payment,
+          ...payment,
             fromMarketing: nextFromMarketing
           }
         : payment
     )
   });
+}
+
+function buildFallbackFinanceFromTreatment(treatment: Treatment): FinanceEntry {
+  const fallbackPayment =
+    treatment.paidAmount > 0
+      ? [
+          createPaymentEntry({
+            id: `${treatment.id}-legacy-payment`,
+            date: treatment.date || todayKey(),
+            amount: treatment.paidAmount,
+            method: "Importado",
+            note: "Pago reconstruido desde la atencion."
+          })
+        ]
+      : [];
+
+  return syncFinanceEntry({
+    id: treatment.linkedFinanceId ?? `finance-${treatment.id}`,
+    date: treatment.date || todayKey(),
+    concept: treatment.detail.trim() || "Atencion clinica",
+    practitioner: normalizePractitionerName(treatment.practitioner),
+    fromMarketing: false,
+    status: "",
+    totalAmount: Math.max(treatment.totalAmount || 0, 0),
+    paidAmount: 0,
+    pendingAmount: 0,
+    description: treatment.note.trim(),
+    linkedTreatmentId: treatment.id,
+    payments: fallbackPayment
+  });
+}
+
+function findTreatmentFinance(patient: Patient | null, treatment: Treatment | null) {
+  if (!patient || !treatment) return null;
+
+  return (
+    patient.finances.find(
+      (entry) => entry.id === treatment.linkedFinanceId || entry.linkedTreatmentId === treatment.id
+    ) ?? buildFallbackFinanceFromTreatment(treatment)
+  );
 }
 
 function buildTreatmentFinanceEntry(
@@ -252,6 +290,7 @@ function buildTreatmentFinanceEntry(
 ): FinanceEntry {
   const totalAmount = toAmount(values.totalAmount);
   const practitioner = normalizePractitionerName(values.practitioner);
+  const fromMarketing = values.fromMarketing === "true" || values.paidFromMarketing === "true";
   const currentPayments = existingFinance?.payments ?? [];
   const existingPaidAmount = currentPayments.reduce((sum, payment) => sum + payment.amount, 0);
   const createPaymentDelta = !existingFinance
@@ -277,6 +316,7 @@ function buildTreatmentFinanceEntry(
     date: values.date || todayKey(),
     concept: values.detail.trim(),
     practitioner,
+    fromMarketing,
     totalAmount,
     status: describeFinanceStatus(totalAmount, Math.min(existingPaidAmount + createPaymentDelta, totalAmount)),
     paidAmount: Math.min(existingPaidAmount + createPaymentDelta, totalAmount),
@@ -315,6 +355,7 @@ function buildAttentionPayload(values: AttentionFormValues) {
       date: referenceDate,
       concept: item.detail.trim(),
       practitioner,
+      fromMarketing: item.paidFromMarketing,
       totalAmount,
       description: note,
       linkedTreatmentId: treatmentId,
@@ -1044,12 +1085,7 @@ export default function App() {
 
     if (kind === "treatment") {
       const existingTreatment = itemId ? currentPatient?.treatments.find((item) => item.id === itemId) ?? null : null;
-      const existingFinance =
-        currentPatient?.finances.find(
-          (entry) =>
-            entry.id === existingTreatment?.linkedFinanceId ||
-            (itemId ? entry.linkedTreatmentId === itemId : false)
-        ) ?? null;
+      const existingFinance = findTreatmentFinance(currentPatient, existingTreatment);
       const treatmentId = itemId ?? createId("treatment");
       const totalAmount = toAmount(values.totalAmount);
       const practitioner = normalizePractitionerName(values.practitioner);
@@ -1614,12 +1650,7 @@ export default function App() {
 
     if (kind === "treatment") {
       const item = itemId ? patient?.treatments.find((entry) => entry.id === itemId) ?? null : null;
-      const linkedFinance =
-        item && patient
-          ? patient.finances.find(
-              (entry) => entry.id === item.linkedFinanceId || entry.linkedTreatmentId === item.id
-            ) ?? null
-          : null;
+      const linkedFinance = findTreatmentFinance(patient, item);
       return {
         patientTarget: defaultPatientTarget,
         date: item?.date ?? todayKey(),
@@ -1629,7 +1660,10 @@ export default function App() {
         totalAmount: item ? String(item.totalAmount) : "",
         paidAmount: "",
         paidFromMarketing: "false",
-        fromMarketing: hasTreatmentMarketingPayments(linkedFinance) ? "true" : "false",
+        fromMarketing:
+          linkedFinance && (Boolean(linkedFinance.fromMarketing) || hasTreatmentMarketingPayments(linkedFinance))
+            ? "true"
+            : "false",
         status: item?.status ?? "Realizado",
         note: item?.note ?? ""
       };
@@ -1701,7 +1735,7 @@ export default function App() {
         financeTarget: pendingFinance?.id ?? "",
         amount: "",
         method: "Efectivo",
-        fromMarketing: "false",
+        fromMarketing: pendingFinance?.fromMarketing ? "true" : "false",
         note: ""
       };
     }
