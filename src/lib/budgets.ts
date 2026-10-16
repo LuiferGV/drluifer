@@ -1,10 +1,5 @@
-import { addDays, formatDate } from "./date";
+import { addDays, formatDate, todayIsoDate } from "./date";
 import type { BudgetEntry, BudgetItem, BudgetStatus } from "../types/clinic";
-
-function parseIsoDate(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
 
 export function createBudgetItem(id: string, quantity = 1, detail = "", unitPrice = 0): BudgetItem {
   const safeQuantity = Math.max(quantity, 0);
@@ -28,8 +23,7 @@ export function getBudgetTotalAmount(items: BudgetItem[]): number {
 }
 
 export function buildBudgetValidUntil(createdAt: string, validityDays: 15 | 30): string {
-  const baseDate = parseIsoDate(createdAt);
-  return addDays(baseDate, validityDays);
+  return addDays(createdAt, validityDays);
 }
 
 export function createBudgetNumber(createdAt: string, seed: string): string {
@@ -44,14 +38,13 @@ export function normalizeBudgetStatus(value?: string): BudgetStatus {
 }
 
 export function isBudgetValid(entry: BudgetEntry): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-  return entry.validUntil >= today;
+  return entry.validUntil >= todayIsoDate();
 }
 
 export function syncBudgetEntry(entry: BudgetEntry): BudgetEntry {
   const normalizedItems = entry.items.map((item) => syncBudgetItem(item)).filter((item) => item.detail.trim());
   const validityDays = entry.validityDays === 30 ? 30 : 15;
-  const createdAt = entry.createdAt || new Date().toISOString().slice(0, 10);
+  const createdAt = entry.createdAt || todayIsoDate();
 
   return {
     ...entry,

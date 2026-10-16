@@ -1,23 +1,43 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  startTransition,
+  Suspense,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import {
+  Bell,
+  CalendarDays,
+  FileText,
+  Home,
+  LoaderCircle,
+  LogOut,
+  Megaphone,
+  ShieldCheck,
+  Stethoscope,
+  UserPlus,
+  Users,
+  WalletCards
+} from "lucide-react";
 import logoNuevo from "../logonuevo.png";
-import { AlertBoard } from "./components/AlertBoard";
-import { AttentionModal, type AttentionFormValues } from "./components/AttentionModal";
+import type { AttentionFormValues } from "./components/AttentionModal";
 import { AuthScreen } from "./components/AuthScreen";
-import { BudgetModal, type BudgetFormValues } from "./components/BudgetModal";
-import { BudgetPrintPreview } from "./components/BudgetPrintPreview";
-import { ConfirmModal } from "./components/ConfirmModal";
-import { EntityModal, type ModalField } from "./components/EntityModal";
-import { MarketingDashboard } from "./components/MarketingDashboard";
+import type { BudgetFormValues } from "./components/BudgetModal";
+import type { ModalField } from "./components/EntityModal";
 import { MetricCard } from "./components/MetricCard";
-import { PatientRoster } from "./components/PatientRoster";
-import { PatientWorkspace, type RecordKind } from "./components/PatientWorkspace";
-import { PeriodFinancials } from "./components/PeriodFinancials";
+import type { RecordKind } from "./components/PatientWorkspace";
+import type { LoginFormValues } from "./features/auth/auth.schema";
+import type { PatientFormValues } from "./features/patients/patient.schema";
 import { useClinicData } from "./hooks/useClinicData";
 import { useFirebaseSession } from "./hooks/useFirebaseSession";
 import {
   deleteExpense as deleteExpenseRecord,
   deletePatient as deletePatientRecord,
   hasRealtimeDatabaseConfig,
+  isFirebaseReadOnly,
   saveExpense as saveGeneralExpense,
   savePatient,
   subscribeServerTimeOffset
@@ -47,7 +67,8 @@ import {
   formatGs,
   formatMonthRangeLabel,
   getMonthKey,
-  normalizeMonthRange
+  normalizeMonthRange,
+  todayIsoDate
 } from "./lib/date";
 import { getMarketingDashboardData } from "./lib/marketing";
 import {
@@ -74,6 +95,26 @@ import type {
   Treatment
 } from "./types/clinic";
 
+const AlertBoard = lazy(async () => ({ default: (await import("./components/AlertBoard")).AlertBoard }));
+const AttentionModal = lazy(async () => ({ default: (await import("./components/AttentionModal")).AttentionModal }));
+const BudgetModal = lazy(async () => ({ default: (await import("./components/BudgetModal")).BudgetModal }));
+const BudgetPrintPreview = lazy(async () => ({
+  default: (await import("./components/BudgetPrintPreview")).BudgetPrintPreview
+}));
+const ConfirmModal = lazy(async () => ({ default: (await import("./components/ConfirmModal")).ConfirmModal }));
+const EntityModal = lazy(async () => ({ default: (await import("./components/EntityModal")).EntityModal }));
+const MarketingDashboard = lazy(async () => ({
+  default: (await import("./components/MarketingDashboard")).MarketingDashboard
+}));
+const PatientRoster = lazy(async () => ({ default: (await import("./components/PatientRoster")).PatientRoster }));
+const PatientModal = lazy(async () => ({ default: (await import("./components/PatientModal")).PatientModal }));
+const PatientWorkspace = lazy(async () => ({
+  default: (await import("./components/PatientWorkspace")).PatientWorkspace
+}));
+const PeriodFinancials = lazy(async () => ({
+  default: (await import("./components/PeriodFinancials")).PeriodFinancials
+}));
+
 type MainView = "home" | "patients" | "alerts" | "finance" | "marketing";
 type PatientLetterFilter = "all" | string;
 type DoctorFilter = "all" | string;
@@ -94,6 +135,15 @@ type DeleteIntent =
   | { target: "marketing-expense"; expenseId: string }
   | { target: RecordKind; patientId: string; itemId: string }
   | null;
+
+function InterfaceLoader() {
+  return (
+    <div className="surface-card flex min-h-40 items-center justify-center gap-3 p-6 text-clinic-muted" role="status">
+      <LoaderCircle className="animate-spin" aria-hidden="true" size={20} />
+      <span>Cargando módulo...</span>
+    </div>
+  );
+}
 
 function getPatientInitial(patientName: string) {
   const firstChar = patientName.trim().charAt(0).toUpperCase();
@@ -132,7 +182,7 @@ function filterPatients(
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayIsoDate();
 }
 
 function currentMonthKey(referenceDate = new Date()) {
@@ -478,7 +528,7 @@ function buildBudgetEntryFromForm(values: BudgetFormValues, budgetId?: string, e
   });
 }
 
-function defaultPatientValues(patient?: Patient) {
+function defaultPatientValues(patient?: Patient): PatientFormValues {
   return {
     fullName: patient?.fullName ?? "",
     phone: patient?.phone ?? "",
@@ -488,24 +538,6 @@ function defaultPatientValues(patient?: Patient) {
     tags: patient?.tags.join(", ") ?? "",
     clinicalSummary: patient?.clinicalSummary ?? ""
   };
-}
-
-function patientFields(): ModalField[] {
-  return [
-    { name: "fullName", label: "Nombre y apellido", type: "text", required: true, placeholder: "Ej.: Juan Perez" },
-    { name: "phone", label: "Telefono", type: "tel", required: true, placeholder: "+595981123456" },
-    { name: "birthDate", label: "Fecha de nacimiento", type: "date" },
-    { name: "occupation", label: "Ocupacion", type: "text", placeholder: "Ej.: Arquitecta" },
-    { name: "city", label: "Ciudad", type: "text", placeholder: "Ej.: Asuncion" },
-    { name: "tags", label: "Etiquetas", type: "text", placeholder: "Periodoncia, Control, WhatsApp" },
-    {
-      name: "clinicalSummary",
-      label: "Resumen clinico",
-      type: "textarea",
-      placeholder: "Resumen rapido del estado del paciente",
-      rows: 5
-    }
-  ];
 }
 
 function marketingExpenseFields(): ModalField[] {
@@ -544,6 +576,7 @@ function defaultMarketingExpenseValues(expense?: Expense) {
 
 export default function App() {
   const { sessionState, userEmail, authError, isSubmitting, login, logout } = useFirebaseSession();
+  const readOnlyMode = isFirebaseReadOnly();
   const { patients: sourcePatients, expenses: sourceExpenses } = useClinicData(
     sessionState === "authenticated"
   );
@@ -564,9 +597,6 @@ export default function App() {
   const [activeView, setActiveView] = useState<MainView>("home");
   const [modalState, setModalState] = useState<ModalState>(null);
   const [deleteIntent, setDeleteIntent] = useState<DeleteIntent>(null);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [manualAuthError, setManualAuthError] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncMessage, setSyncMessage] = useState("");
   const periodPickerRef = useRef<HTMLDivElement | null>(null);
@@ -620,13 +650,6 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (sessionState === "authenticated") {
-      setManualAuthError(null);
-      setLoginPassword("");
-    }
-  }, [sessionState]);
-
-  useEffect(() => {
     if (syncState !== "saved") return undefined;
 
     const timeoutId = window.setTimeout(() => {
@@ -663,11 +686,9 @@ export default function App() {
   }, [currentCalendarMonth, isPeriodAuto]);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
-  const filteredPatients = filterPatients(
-    clinicPatients,
-    deferredSearchTerm,
-    activePatientLetter,
-    activeDoctorFilter
+  const filteredPatients = useMemo(
+    () => filterPatients(clinicPatients, deferredSearchTerm, activePatientLetter, activeDoctorFilter),
+    [activeDoctorFilter, activePatientLetter, clinicPatients, deferredSearchTerm]
   );
 
   useEffect(() => {
@@ -684,13 +705,31 @@ export default function App() {
 
   const periodRange = useMemo(() => normalizeMonthRange(periodStartMonth, periodEndMonth), [periodEndMonth, periodStartMonth]);
   const periodLabel = useMemo(() => formatMonthRangeLabel(periodRange), [periodRange]);
-  const selectedPatient = filteredPatients.find((patient) => patient.id === selectedPatientId) ?? null;
-  const alerts = getClinicAlerts(clinicPatients, referenceNow);
-  const metrics = getDashboardMetrics(clinicPatients, clinicExpenses, periodRange);
-  const pendingCollections = getPendingCollections(clinicPatients, periodRange);
-  const collectedEntries = getCollectedIncomeEntries(clinicPatients, periodRange);
-  const periodExpenses = getPeriodExpenses(clinicPatients, clinicExpenses, periodRange);
-  const marketingData = getMarketingDashboardData(clinicPatients, clinicExpenses, periodRange);
+  const selectedPatient = useMemo(
+    () => filteredPatients.find((patient) => patient.id === selectedPatientId) ?? null,
+    [filteredPatients, selectedPatientId]
+  );
+  const alerts = useMemo(() => getClinicAlerts(clinicPatients, referenceNow), [clinicPatients, referenceNow]);
+  const metrics = useMemo(
+    () => getDashboardMetrics(clinicPatients, clinicExpenses, periodRange),
+    [clinicExpenses, clinicPatients, periodRange]
+  );
+  const pendingCollections = useMemo(
+    () => getPendingCollections(clinicPatients, periodRange),
+    [clinicPatients, periodRange]
+  );
+  const collectedEntries = useMemo(
+    () => getCollectedIncomeEntries(clinicPatients, periodRange),
+    [clinicPatients, periodRange]
+  );
+  const periodExpenses = useMemo(
+    () => getPeriodExpenses(clinicPatients, clinicExpenses, periodRange),
+    [clinicExpenses, clinicPatients, periodRange]
+  );
+  const marketingData = useMemo(
+    () => getMarketingDashboardData(clinicPatients, clinicExpenses, periodRange),
+    [clinicExpenses, clinicPatients, periodRange]
+  );
   const activeAlertsCount = alerts.length;
   const urgentAlertsCount = alerts.filter((alert) => alert.bucket === "vencido" || alert.bucket === "today").length;
 
@@ -743,6 +782,13 @@ export default function App() {
     successMessage: string,
     onRollback?: () => void
   ) => {
+    if (readOnlyMode) {
+      setSyncState("error");
+      setSyncMessage("V2 protegida: Firebase está en modo de solo lectura.");
+      onRollback?.();
+      return;
+    }
+
     if (!hasRealtimeDatabaseConfig()) {
       setSyncState("error");
       setSyncMessage("Falta la configuracion de Realtime Database.");
@@ -869,21 +915,15 @@ export default function App() {
     setDeleteIntent(null);
   };
 
-  const handleLoginSubmit = () => {
-    if (!loginEmail.trim() || !loginPassword.trim()) {
-      setManualAuthError("Completa el email y la contrasena para ingresar.");
-      return;
-    }
-
-    setManualAuthError(null);
-    void login(loginEmail.trim(), loginPassword);
+  const handleLoginSubmit = ({ email, password }: LoginFormValues) => {
+    return login(email, password);
   };
 
   const handleLogout = () => {
     void logout();
   };
 
-  const submitPatientForm = (values: Record<string, string>, patientId?: string) => {
+  const submitPatientForm = (values: PatientFormValues, patientId?: string) => {
     const previousPatients = clinicPatients;
     const previousSelectedPatientId = selectedPatientId;
     const previousView = activeView;
@@ -1862,14 +1902,12 @@ export default function App() {
 
     if (modalState.type === "patient-create") {
       return (
-        <EntityModal
-          title="Nuevo paciente"
-          subtitle="Crea una nueva ficha clinica para el consultorio."
-          submitLabel="Guardar paciente"
-          fields={patientFields()}
+        <PatientModal
+          key="patient-create"
+          mode="create"
           initialValues={defaultPatientValues()}
           onClose={closeModals}
-          onSubmit={(values) => submitPatientForm(values)}
+          onSubmit={submitPatientForm}
         />
       );
     }
@@ -1910,11 +1948,9 @@ export default function App() {
       if (!patient) return null;
 
       return (
-        <EntityModal
-          title="Editar ficha"
-          subtitle="Actualiza los datos generales del paciente."
-          submitLabel="Guardar cambios"
-          fields={patientFields()}
+        <PatientModal
+          key={`patient-${patient.id}`}
+          mode="edit"
           initialValues={defaultPatientValues(patient)}
           onClose={closeModals}
           onSubmit={(values) => submitPatientForm(values, patient.id)}
@@ -2113,18 +2149,12 @@ export default function App() {
     };
   }, [clinicExpenses, clinicPatients, deleteIntent]);
 
-  const authScreenError = manualAuthError ?? authError;
-
   if (sessionState !== "authenticated") {
     return (
       <AuthScreen
-        email={loginEmail}
-        password={loginPassword}
         sessionState={sessionState}
-        authError={authScreenError}
+        authError={authError}
         isSubmitting={isSubmitting}
-        onEmailChange={setLoginEmail}
-        onPasswordChange={setLoginPassword}
         onSubmit={handleLoginSubmit}
       />
     );
@@ -2352,27 +2382,45 @@ export default function App() {
           {syncMessage ? <span className={syncPillClass}>{syncMessage}</span> : null}
           {userEmail ? <span className="status-pill status-pill--neutral">{userEmail}</span> : null}
           <button type="button" className="outline-button" onClick={handleLogout}>
-            Cerrar sesion
+            <LogOut className="button-icon" aria-hidden="true" size={18} />
+            Cerrar sesión
           </button>
-          <button type="button" className="outline-button" onClick={openPatientCreate}>
+          <button type="button" className="outline-button" onClick={openPatientCreate} disabled={readOnlyMode}>
+            <UserPlus className="button-icon" aria-hidden="true" size={18} />
             Nuevo paciente
           </button>
-          <button type="button" className="outline-button" onClick={openBudgetCreate}>
+          <button type="button" className="outline-button" onClick={openBudgetCreate} disabled={readOnlyMode}>
+            <FileText className="button-icon" aria-hidden="true" size={18} />
             Presupuesto
           </button>
-          <button type="button" className="primary-button" onClick={openTreatmentCreate}>
-            Atencion rapida
+          <button type="button" className="primary-button" onClick={openTreatmentCreate} disabled={readOnlyMode}>
+            <Stethoscope className="button-icon" aria-hidden="true" size={18} />
+            Atención rápida
           </button>
         </div>
       </header>
+
+      {readOnlyMode ? (
+        <aside className="mt-4 flex items-start gap-3 rounded-clinical-lg border border-clinic-border bg-clinic-surface/90 p-4 shadow-clinical">
+          <ShieldCheck className="mt-0.5 shrink-0 text-clinic-accent" aria-hidden="true" size={21} />
+          <div>
+            <strong className="block text-sm text-clinic-foreground">V2 protegida en modo de solo lectura</strong>
+            <p className="mt-1 text-sm text-clinic-muted">
+              La sincronización en tiempo real sigue activa, pero este entorno no puede modificar pacientes ni datos clínicos.
+            </p>
+          </div>
+        </aside>
+      ) : null}
 
       <section className="control-bar">
         <div className="control-bar__nav">
           <div className="view-switcher">
             <button type="button" className={`nav-toggle ${activeView === "home" ? "is-active" : ""}`} onClick={() => setActiveView("home")}>
+              <Home className="button-icon" aria-hidden="true" size={17} />
               Inicio
             </button>
             <button type="button" className={`nav-toggle ${activeView === "alerts" ? "is-active" : ""}`} onClick={() => setActiveView("alerts")}>
+              <Bell className="button-icon" aria-hidden="true" size={17} />
               Alertas
             </button>
             <button
@@ -2380,6 +2428,7 @@ export default function App() {
               className={`nav-toggle ${activeView === "finance" ? "is-active" : ""}`}
               onClick={() => setActiveView("finance")}
             >
+              <WalletCards className="button-icon" aria-hidden="true" size={17} />
               Finanzas
             </button>
             <button
@@ -2387,6 +2436,7 @@ export default function App() {
               className={`nav-toggle ${activeView === "marketing" ? "is-active" : ""}`}
               onClick={() => setActiveView("marketing")}
             >
+              <Megaphone className="button-icon" aria-hidden="true" size={17} />
               Marketing
             </button>
           </div>
@@ -2396,6 +2446,7 @@ export default function App() {
             className={`nav-toggle nav-toggle--priority ${activeView === "patients" ? "is-active" : ""}`}
             onClick={() => setActiveView("patients")}
           >
+            <Users className="button-icon" aria-hidden="true" size={18} />
             Pacientes
           </button>
         </div>
@@ -2408,7 +2459,10 @@ export default function App() {
             aria-haspopup="dialog"
             onClick={() => setShowPeriodPanel((current) => !current)}
           >
-            <span className="period-trigger__label">Periodo</span>
+            <span className="period-trigger__label">
+              <CalendarDays aria-hidden="true" size={15} />
+              Periodo
+            </span>
             <span className="period-trigger__value">{periodLabel}</span>
           </button>
 
@@ -2427,18 +2481,20 @@ export default function App() {
         </div>
       </section>
 
-      <main className="app-stage">{renderMainView()}</main>
+      <Suspense fallback={<InterfaceLoader />}>
+        <main className="app-stage">{renderMainView()}</main>
 
-      {modalConfig}
-      {deleteConfig ? (
-        <ConfirmModal
-          title={deleteConfig.title}
-          message={deleteConfig.message}
-          confirmLabel={deleteConfig.confirmLabel}
-          onClose={closeModals}
-          onConfirm={handleDeleteConfirmed}
-        />
-      ) : null}
+        {modalConfig}
+        {deleteConfig ? (
+          <ConfirmModal
+            title={deleteConfig.title}
+            message={deleteConfig.message}
+            confirmLabel={deleteConfig.confirmLabel}
+            onClose={closeModals}
+            onConfirm={handleDeleteConfirmed}
+          />
+        ) : null}
+      </Suspense>
     </div>
   );
 }

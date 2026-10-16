@@ -2,6 +2,7 @@ import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { getDatabase, onValue, ref, remove, set } from "firebase/database";
 import { normalizeBudgetStatus, sortBudgetsByDateDesc, syncBudgetEntry } from "./budgets";
+import { todayIsoDate } from "./date";
 import { createLegacyPayments, sortFinancesByActivity, syncFinanceEntry } from "./financeEntries";
 import type { Expense, ExpenseScope, FinanceTone, Patient } from "../types/clinic";
 
@@ -25,6 +26,9 @@ const coreRequiredKeys = [
 ];
 
 const databaseRequiredKeys = [...coreRequiredKeys, firebaseConfig.databaseURL];
+// V2 safety invariant: enabling writes requires a deliberate source-code change.
+const V2_FORCE_READ_ONLY: boolean = true;
+const firebaseReadOnly = V2_FORCE_READ_ONLY || import.meta.env.VITE_FIREBASE_READ_ONLY !== "false";
 
 export function hasFirebaseCoreConfig(): boolean {
   return coreRequiredKeys.every(Boolean);
@@ -32,6 +36,16 @@ export function hasFirebaseCoreConfig(): boolean {
 
 export function hasRealtimeDatabaseConfig(): boolean {
   return databaseRequiredKeys.every(Boolean);
+}
+
+export function isFirebaseReadOnly(): boolean {
+  return firebaseReadOnly;
+}
+
+function ensureFirebaseWritesEnabled() {
+  if (firebaseReadOnly) {
+    throw new Error("La V2 está protegida en modo de solo lectura.");
+  }
 }
 
 function ensureApp() {
@@ -97,7 +111,7 @@ function normalizeExpense(
 
   return {
     id: rawId,
-    date: String(rawExpense.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+    date: String(rawExpense.date || todayIsoDate()).slice(0, 10),
     concept: String(rawExpense.concept || "Sin concepto"),
     category: String(rawExpense.category || "General"),
     amount: Number(rawExpense.amount || 0),
@@ -122,7 +136,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
     const id = String(entry.id || `finance-${index + 1}`);
     const payments = normalizeCollection<Record<string, unknown>>(entry.payments).map((payment, paymentIndex) => ({
       id: String(payment.id || `${id}-payment-${paymentIndex + 1}`),
-      date: String(payment.date || entry.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+      date: String(payment.date || entry.date || todayIsoDate()).slice(0, 10),
       amount: Number(payment.amount || 0),
       method: String(payment.method || "Otro"),
       note: String(payment.note || ""),
@@ -131,7 +145,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
 
     return syncFinanceEntry({
       id,
-      date: String(entry.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+      date: String(entry.date || todayIsoDate()).slice(0, 10),
       concept: String(entry.concept || "Sin concepto"),
       practitioner: entry.practitioner ? String(entry.practitioner) : undefined,
       fromMarketing: Boolean(entry.fromMarketing),
@@ -143,7 +157,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
       linkedTreatmentId: entry.linkedTreatmentId ? String(entry.linkedTreatmentId) : undefined,
       payments: payments.length > 0 ? payments : createLegacyPayments({
         id,
-        date: String(entry.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+        date: String(entry.date || todayIsoDate()).slice(0, 10),
         paidAmount: Number(entry.paidAmount || 0),
         description: String(entry.description || "")
       })
@@ -161,7 +175,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
         id: String(budget.id || `budget-${index + 1}`),
         budgetNumber: String(budget.budgetNumber || ""),
         status: normalizeBudgetStatus(String(budget.status || "Pendiente")),
-        createdAt: String(budget.createdAt || new Date().toISOString().slice(0, 10)).slice(0, 10),
+        createdAt: String(budget.createdAt || todayIsoDate()).slice(0, 10),
         validityDays: Number(budget.validityDays || 15) === 30 ? 30 : 15,
         validUntil: String(budget.validUntil || ""),
         note: String(budget.note || ""),
@@ -181,7 +195,7 @@ function normalizePatient(rawId: string, rawPatient: Record<string, unknown>): P
     id: rawId,
     fullName: String(rawPatient.fullName || rawPatient.name || "Paciente sin nombre"),
     phone: String(rawPatient.phone || ""),
-    createdAt: String(rawPatient.createdAt || new Date().toISOString().slice(0, 10)).slice(0, 10),
+    createdAt: String(rawPatient.createdAt || todayIsoDate()).slice(0, 10),
     birthDate: String(rawPatient.birthDate || ""),
     lastVisit: rawPatient.lastVisit ? String(rawPatient.lastVisit).slice(0, 10) : null,
     financeTone: inferFinanceTone(String(rawPatient.financeTone || rawPatient.financeStatus || ""), pendingTotal),
@@ -307,22 +321,26 @@ export function subscribeServerTimeOffset(
 }
 
 export async function savePatient(patient: Patient) {
+  ensureFirebaseWritesEnabled();
   const database = ensureDatabase();
   await set(ref(database, `odontologia/pacientes/${patient.id}`), serializePatient(patient));
 }
 
 export async function deletePatient(patientId: string) {
+  ensureFirebaseWritesEnabled();
   const database = ensureDatabase();
   await remove(ref(database, `odontologia/pacientes/${patientId}`));
 }
 
 export async function saveExpense(expense: Expense) {
+  ensureFirebaseWritesEnabled();
   const database = ensureDatabase();
   const { id, ...expensePayload } = expense;
   await set(ref(database, `odontologia/egresos/${id}`), sanitizeRealtimeValue(expensePayload));
 }
 
 export async function deleteExpense(expenseId: string) {
+  ensureFirebaseWritesEnabled();
   const database = ensureDatabase();
   await remove(ref(database, `odontologia/egresos/${expenseId}`));
 }

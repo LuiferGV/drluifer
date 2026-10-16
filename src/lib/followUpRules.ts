@@ -1,4 +1,4 @@
-import { addMonths, formatDate, addDays } from "./date";
+import { addDays, addMonths, formatDate, todayIsoDate } from "./date";
 
 type FollowUpOffset = {
   months?: number;
@@ -46,11 +46,6 @@ const typeOffsets = new Map<string, FollowUpOffset>([
   ["mantenimiento 6 meses", { months: 6 }]
 ]);
 
-function parseIsoDate(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
 function normalizeText(value: string): string {
   return value
     .normalize("NFD")
@@ -59,14 +54,13 @@ function normalizeText(value: string): string {
 }
 
 function buildDueDate(eventDate: string, offset: FollowUpOffset): string {
-  const safeDate = eventDate || new Date().toISOString().slice(0, 10);
-  const baseDate = parseIsoDate(safeDate);
+  const safeDate = eventDate || todayIsoDate();
 
   if (offset.months) {
-    return addMonths(baseDate, offset.months);
+    return addMonths(safeDate, offset.months);
   }
 
-  return addDays(baseDate, offset.days ?? 0);
+  return addDays(safeDate, offset.days ?? 0);
 }
 
 export function getAutoFollowUpDateForType(type: string, eventDate: string): string | null {

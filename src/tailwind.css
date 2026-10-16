@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+
+  --color-clinic-canvas: oklch(0.145 0.025 238);
+  --color-clinic-surface: oklch(0.19 0.028 238);
+  --color-clinic-elevated: oklch(0.235 0.032 238);
+  --color-clinic-border: oklch(0.79 0.045 225 / 0.18);
+  --color-clinic-foreground: oklch(0.97 0.01 225);
+  --color-clinic-muted: oklch(0.72 0.035 225);
+  --color-clinic-primary: oklch(0.72 0.15 237);
+  --color-clinic-accent: oklch(0.8 0.12 178);
+  --color-clinic-danger: oklch(0.73 0.16 20);
+
+  --radius-clinical-sm: 0.75rem;
+  --radius-clinical: 1.125rem;
+  --radius-clinical-lg: 1.5rem;
+  --shadow-clinical: 0 24px 70px rgb(1 8 14 / 0.34);
+  --ease-clinical: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-clinic-canvas);
+  }
+
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    color: var(--color-clinic-foreground);
+    background: var(--color-clinic-canvas);
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    color: var(--color-clinic-canvas);
+    background: var(--color-clinic-accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-clinic-primary);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

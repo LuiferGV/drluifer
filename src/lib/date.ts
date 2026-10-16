@@ -1,3 +1,7 @@
+import { CLINIC_TIMEZONE, dayjs } from "./dayjs";
+
+const ISO_DATE_FORMAT = "YYYY-MM-DD";
+const ISO_MONTH_FORMAT = "YYYY-MM";
 const currencyFormatter = new Intl.NumberFormat("es-PY");
 const shortDateFormatter = new Intl.DateTimeFormat("es-PY", {
   day: "2-digit",
@@ -22,27 +26,23 @@ export interface MonthRange {
 }
 
 function parseLocalDate(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  return dayjs(value, ISO_DATE_FORMAT, true).toDate();
 }
 
 export function toIsoDate(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return dayjs(value).format(ISO_DATE_FORMAT);
 }
 
-export function addDays(baseDate: Date, amount: number): string {
-  const next = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
-  next.setDate(next.getDate() + amount);
-  return toIsoDate(next);
+export function todayIsoDate(referenceDate = new Date()): string {
+  return dayjs(referenceDate).tz(CLINIC_TIMEZONE).format(ISO_DATE_FORMAT);
 }
 
-export function addMonths(baseDate: Date, amount: number): string {
-  const next = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
-  next.setMonth(next.getMonth() + amount);
-  return toIsoDate(next);
+export function addDays(baseDate: Date | string, amount: number): string {
+  return dayjs(baseDate).add(amount, "day").format(ISO_DATE_FORMAT);
+}
+
+export function addMonths(baseDate: Date | string, amount: number): string {
+  return dayjs(baseDate).add(amount, "month").format(ISO_DATE_FORMAT);
 }
 
 export function formatDate(value: string | null): string {
@@ -55,12 +55,11 @@ export function formatGs(amount: number): string {
 }
 
 export function getMonthKey(value: Date): string {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+  return dayjs(value).tz(CLINIC_TIMEZONE).format(ISO_MONTH_FORMAT);
 }
 
 function monthKeyToDate(monthKey: string): Date {
-  const [year, month] = monthKey.split("-").map(Number);
-  return new Date(year, month - 1, 1);
+  return dayjs(`${monthKey}-01`, ISO_DATE_FORMAT, true).toDate();
 }
 
 function compareMonthKeys(left: string, right: string): number {
@@ -72,9 +71,7 @@ export function isSameMonth(isoDate: string, monthKey: string): boolean {
 }
 
 export function shiftMonthKey(monthKey: string, amount: number): string {
-  const baseDate = monthKeyToDate(monthKey);
-  const shiftedDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + amount, 1);
-  return getMonthKey(shiftedDate);
+  return dayjs(`${monthKey}-01`, ISO_DATE_FORMAT, true).add(amount, "month").format(ISO_MONTH_FORMAT);
 }
 
 export function normalizeMonthRange(startMonth: string, endMonth: string): MonthRange {
@@ -89,10 +86,9 @@ export function isDateWithinMonthRange(isoDate: string, range: MonthRange): bool
 }
 
 export function getDaysDiff(isoDate: string, now = new Date()): number {
-  const target = parseLocalDate(isoDate);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffMs = target.getTime() - today.getTime();
-  return Math.round(diffMs / 86400000);
+  const target = dayjs.tz(isoDate, ISO_DATE_FORMAT, CLINIC_TIMEZONE).startOf("day");
+  const today = dayjs(now).tz(CLINIC_TIMEZONE).startOf("day");
+  return target.diff(today, "day");
 }
 
 export function formatMonthLabel(monthKey: string): string {

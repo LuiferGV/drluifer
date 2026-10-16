@@ -1,50 +1,67 @@
-import type { FormEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Activity,
+  LoaderCircle,
+  LockKeyhole,
+  LogIn,
+  Mail,
+  ShieldCheck
+} from "lucide-react";
+import { useForm } from "react-hook-form";
+import {
+  loginSchema,
+  type LoginFormInput,
+  type LoginFormValues
+} from "../features/auth/auth.schema";
 
 interface AuthScreenProps {
-  email: string;
-  password: string;
   sessionState: "not-configured" | "loading" | "signed-out" | "error";
   authError: string | null;
   isSubmitting: boolean;
-  onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit: (values: LoginFormValues) => void | Promise<unknown>;
 }
 
 export function AuthScreen({
-  email,
-  password,
   sessionState,
   authError,
   isSubmitting,
-  onEmailChange,
-  onPasswordChange,
   onSubmit
 }: AuthScreenProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<LoginFormInput, unknown, LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
+    defaultValues: {
+      email: "",
+      password: ""
+    }
+  });
+
   const title =
     sessionState === "not-configured" ? "Falta configurar Firebase" : "Acceso privado del consultorio";
   const subtitle =
     sessionState === "not-configured"
       ? "Carga las variables de Firebase para usar la base real del sistema."
-      : "Ingresa con tu email y contrasena para abrir pacientes, atenciones, alertas y finanzas.";
+      : "Ingresa con tu email y contraseña para abrir pacientes, atenciones, alertas y finanzas.";
 
   const helperText =
     sessionState === "loading"
-      ? "Verificando si ya existe una sesion activa..."
+      ? "Verificando si ya existe una sesión activa..."
       : sessionState === "error"
-        ? "Firebase respondio con un problema de autenticacion."
-        : "Solo los usuarios autorizados pueden entrar al panel clinico.";
+        ? "Firebase respondió con un problema de autenticación."
+        : "Solo los usuarios autorizados pueden entrar al panel clínico.";
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    onSubmit();
-  };
+  const isDisabled = sessionState === "not-configured" || sessionState === "loading" || isSubmitting;
 
   return (
-    <div className="auth-shell">
+    <div className="auth-shell min-h-dvh bg-clinic-canvas text-clinic-foreground antialiased">
       <div className="page-backdrop" />
 
-      <section className="auth-stage">
+      <section className="auth-stage isolate">
         <div className="auth-hero">
           <p className="eyebrow">Dr. Luifer</p>
           <div className="brand-mark brand-mark--hero" aria-hidden="true">
@@ -55,53 +72,83 @@ export function AuthScreen({
           <p>{subtitle}</p>
           <div className="auth-highlights">
             <article className="quick-card">
+              <ShieldCheck aria-hidden="true" size={22} strokeWidth={1.8} />
               <strong>Pacientes protegidos</strong>
-              <span>La base clinica solo se abre con autenticacion activa en Firebase.</span>
+              <span>La base clínica solo se abre con autenticación activa en Firebase.</span>
             </article>
             <article className="quick-card">
-              <strong>Sincronizacion en tiempo real</strong>
-              <span>Todo lo que cargues quedara listo para seguir desde otro equipo o una nueva sesion.</span>
+              <Activity aria-hidden="true" size={22} strokeWidth={1.8} />
+              <strong>Sincronización en tiempo real</strong>
+              <span>La información se mantiene disponible entre equipos y sesiones autorizadas.</span>
             </article>
           </div>
         </div>
 
         <section className="auth-card">
-          <p className="eyebrow">Ingreso</p>
+          <p className="eyebrow">Ingreso seguro</p>
           <h2>Panel del consultorio</h2>
           <p className="auth-card__subtitle">{helperText}</p>
 
-          <form className="auth-form" onSubmit={handleSubmit}>
+          <form className="auth-form" noValidate onSubmit={handleSubmit(onSubmit)}>
             <label className="modal-field">
-              <span>Email</span>
+              <span className="modal-field__label">
+                <Mail aria-hidden="true" size={17} strokeWidth={1.8} />
+                Email
+              </span>
               <input
                 type="email"
-                value={email}
                 placeholder="tuemail@consultorio.com"
                 autoComplete="email"
-                disabled={sessionState === "not-configured" || isSubmitting}
-                onChange={(event) => onEmailChange(event.target.value)}
+                inputMode="email"
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? "login-email-error" : undefined}
+                disabled={isDisabled}
+                {...register("email")}
               />
+              {errors.email ? (
+                <small id="login-email-error" className="modal-field__error" role="alert">
+                  {errors.email.message}
+                </small>
+              ) : null}
             </label>
 
             <label className="modal-field">
-              <span>Contrasena</span>
+              <span className="modal-field__label">
+                <LockKeyhole aria-hidden="true" size={17} strokeWidth={1.8} />
+                Contraseña
+              </span>
               <input
                 type="password"
-                value={password}
-                placeholder="Ingresa tu contrasena"
+                placeholder="Ingresa tu contraseña"
                 autoComplete="current-password"
-                disabled={sessionState === "not-configured" || isSubmitting}
-                onChange={(event) => onPasswordChange(event.target.value)}
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={errors.password ? "login-password-error" : undefined}
+                disabled={isDisabled}
+                {...register("password")}
               />
+              {errors.password ? (
+                <small id="login-password-error" className="modal-field__error" role="alert">
+                  {errors.password.message}
+                </small>
+              ) : null}
             </label>
 
-            {authError ? <p className="auth-form__error">{authError}</p> : null}
+            {authError ? (
+              <p className="auth-form__error" role="alert">
+                {authError}
+              </p>
+            ) : null}
 
             <button
               type="submit"
-              className="primary-button auth-form__submit"
-              disabled={sessionState === "not-configured" || isSubmitting}
+              className="primary-button auth-form__submit gap-2"
+              disabled={isDisabled}
             >
+              {isSubmitting ? (
+                <LoaderCircle className="animate-spin" aria-hidden="true" size={18} />
+              ) : (
+                <LogIn aria-hidden="true" size={18} />
+              )}
               {isSubmitting ? "Validando acceso..." : "Ingresar al sistema"}
             </button>
           </form>
